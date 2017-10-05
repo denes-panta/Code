@@ -1,6 +1,0 @@
-Provider_Name	Game_Name	P
-Power Gaming	Melon Madness	0.043
-NetEnt	Starburst	0.084
-NetEnt	Twin Spin	0.049
-MegaJack	Aztec Gold	0.038
-Bwin.Party	Snow Business	0.068
