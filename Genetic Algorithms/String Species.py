@@ -69,14 +69,14 @@ class population: #Population - single gender species
         return new_generation       
 
 
-    def paragon(self): #Returnes the speciment with the highest Fitness Score.
+    def paragon(self): #Returnes the spl;;;eciment with the highest Fitness Score.
         fit_scores = np.asarray(self.fit)
         index = np.argmax(fit_scores)
         return self.population[index]
       
         
 #Script
-def letsplaygod(n = 500, target = 'The Orville.', evol = 'split', mutaprob = 0.01):
+def letsplaygod(n = 500, target = 'The Orville', evol = 'split', mutaprob = 0.01):
     start_time = time.time()
     experiment = population(n = n, target = target)
     generation = 0
@@ -84,7 +84,10 @@ def letsplaygod(n = 500, target = 'The Orville.', evol = 'split', mutaprob = 0.0
         experiment.fit_scores()
         experiment.population = experiment.evolution(evol = evol, k = 2, mutaprob = mutaprob) #This version only works with k = 2
         generation += 1
+        if (generation+1) % 10 == 0: print('Generation: %d: ' % (generation+1) + str(experiment.paragon()))
     duration = (time.time() - start_time)/60
+    print('')
+    print('Final Species: %s' % (experiment.paragon()))
     print('Number of Generations: %d' % (generation))
     print('Population size: %d' % (experiment.n))
     print('Mutation chance: %d' % (experiment.mutaprob*100))
@@ -93,4 +96,4 @@ def letsplaygod(n = 500, target = 'The Orville.', evol = 'split', mutaprob = 0.0
     print('Time of evolution: %0.2f' % (duration) + ' minutes.')
 
 
-letsplaygod(n = 500, target = 'The Orville.', evol = 'split', mutaprob = 0.01)
+letsplaygod(n = 1000, target = 'The Orville.', evol = 'rand', mutaprob = 0.01)
