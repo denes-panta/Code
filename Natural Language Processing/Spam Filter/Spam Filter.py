@@ -12,58 +12,71 @@ from bs4 import BeautifulSoup
 from collections import Counter
 
 #Functions
-def list_txt(path, split = 0.95, pn = False):
+def list_txt(path, split = 0.95, pn = False): 
+    #split = percentage of reviews as training data
+    #path = path of the files
+    #pn = positive = True, negative = False
     reviews = []
     
-    for i, filename in enumerate(os.listdir(path)):
+    for i, filename in enumerate(os.listdir(path)): #Import emails
         reviews.insert(i, (open(path + filename, 'rb').read(), pn))
     
-    p = int(len(reviews) * split)
+    p = int(len(reviews) * split) #define the splitting point
     
-    train = reviews[0:p]
-    test = reviews[p:len(reviews)]   
-    return train, test
+    train = reviews[0:p] #Train data
+    test = reviews[p:len(reviews)] #Test data 
+    
+    return train, test #Return the matrices
+
 
 def extract_parts(texts):
     address = []
     body = []
 
     for text in texts:
-        body.append([str(re.search(b'(?m)^Subject: (.+)$', text[0], re.DOTALL).group(1)), text[1]])
-        address.append([str(re.search(b'(?m)^From: (.*)', text[0]).group(1)), text[1]])
+        body.append([str(re.search(b'(?m)^Subject: (.+)$', text[0], re.DOTALL).group(1)), text[1]]) #Extract bodies
+        address.append([str(re.search(b'(?m)^From: (.*)', text[0]).group(1)), text[1]]) #Extract addresses
+        
     return body, address
 
+
 def words(texts):
-    tokenizer = nltk.tokenize.RegexpTokenizer('((?<=[^\w\s])\w(?=[^\w\s])|(\W))+', gaps = True)
-    stopWords = set(nltk.corpus.stopwords.words('english') + list((' ', '\n', 'b')))
-    ttab = str.maketrans(string.punctuation, ' ' * len(string.punctuation))
+    tokenizer = nltk.tokenize.RegexpTokenizer('((?<=[^\w\s])\w(?=[^\w\s])|(\W))+', gaps = True) #define tokenizer
+    stopWords = set(nltk.corpus.stopwords.words('english') + list((' ', '\n', 'b'))) #defeine stopwords
+    ttab = str.maketrans(string.punctuation, ' ' * len(string.punctuation)) #define translator
     
     for text in texts:
-        text[0] = tokenizer.tokenize(BeautifulSoup(text[0]).get_text())
-        text[0] = [word.lower().translate(ttab) for word in text[0]]
-        text[0] = [re.sub('\d+', ' ', word) for word in text[0]]
-        text[0] = [word for word in text[0] if word not in stopWords]
-        text[0] = [nltk.stem.porter.PorterStemmer().stem(word) for word in text[0]]
+        text[0] = tokenizer.tokenize(BeautifulSoup(text[0]).get_text()) #tokenize
+        text[0] = [word.lower().translate(ttab) for word in text[0]] # lower case & translate
+        text[0] = [re.sub('\d+', ' ', word) for word in text[0]] # filer out numbers
+        text[0] = [word for word in text[0] if word not in stopWords] # filter out stopwords
+        text[0] = [nltk.stem.porter.PorterStemmer().stem(word) for word in text[0]] # stemming
+
     return texts
 
-def address(addrs):
+
+def address(addrs): #Extract addresses of senders
     for address in addrs:
         try:
             address[0] = str(re.search(r'[\w\.-]+@[\w\.-]+', address[0]).group(0))
         except:
             address[0] = 'Unknown'
+            
     return addrs
 
-def word_freq(texts):
+
+def word_freq(texts): #get the word frequencies
     all_words = []
     for text in texts:
         for words in text[0]:
             all_words.append(words)
     
     all_words = nltk.FreqDist(all_words)
+
     return all_words
 
-def word_feat(text, probdist, top = 500):
+
+def word_feat(text, probdist, top = 1000): #return the top words
     word_features = []
     features = {}
 
@@ -72,9 +85,11 @@ def word_feat(text, probdist, top = 500):
         
     for word in word_features:
         features[word] = (word in text[0])
+        
     return features
 
-def feat_create(train, top = 1000):
+
+def feat_create(train, top = 1000): #create features
     feats = []
     
     for text in train:
@@ -117,10 +132,10 @@ for i in feats_2:
 #Ensemble with SKlearn & NLTK
 feats_train = feat_create(b_train, top = 3100)
 feats_test = feat_create(b_test, top = 3100)
-preds = np.chararray((len(feats_test), 3))
+preds = np.chararray((len(feats_test), 5))
 
 classifier = nltk.NaiveBayesClassifier.train(feats_train)
-print("Testing Accuracy %d (NBC): ", (nltk.classify.accuracy(classifier, feats_test)) * 100)
+print("Testing Accuracy (NBC): ", (nltk.classify.accuracy(classifier, feats_test)) * 100)
 for feats in range(len(feats_test)):
     preds[feats, 0] = str(classifier.classify(feats_test[feats][0]))
 
@@ -155,4 +170,4 @@ for i in range(len(preds)):
     else:
         result.append(0)
 
-print(sum(result) / len(result) * 100)
+print('Total Result: %.2f' % (sum(result) / len(result) * 100))
