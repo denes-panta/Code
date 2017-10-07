@@ -1,0 +1,26 @@
+Total Estimated Cost:
+Cost Max:	46119
+Cost Mean:	45084
+Cost Min:	44049
+
+Power Gaming - Melon Madness
+Cost Max:	10034
+Cost Mean:	9791
+Cost Min:	9547
+
+NetEnt - Twin Spin
+Cost Max:	11416
+Cost Mean:	11157
+Cost Min:	10897
+
+MegaJack - Aztec Gold
+Cost Max:	8882
+Cost Mean:	8652
+Cost Min:	8422
+
+Bwin.Party - Snow Business
+Cost Max:	15786
+Cost Mean:	15483
+Cost Min:	15181
+
+
