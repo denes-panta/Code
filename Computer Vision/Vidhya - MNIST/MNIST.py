@@ -177,7 +177,7 @@ for i in range(rounds):
                   metrics = ['accuracy']
                   )
 
-    checkpointer = ModelCheckpoint(filepath = "F:/Code/Python/1 Digits/Models/" + str(i) + "/{epoch:02d}-{loss:.4f}-{acc:.4f}---{val_loss:.4f}-{val_acc:.4f}.hdf5", 
+    checkpointer = ModelCheckpoint(filepath = "F:/Code/Code/MNIST/Models/" + str(i) + "/{epoch:02d}-{loss:.4f}-{acc:.4f}---{val_loss:.4f}-{val_acc:.4f}.hdf5", 
                                    verbose = 0) #Save the weigth of each iteration
     
     early_stop = EarlyStopping(monitor='val_loss', #Early stop, when improvement stops
