@@ -17,7 +17,6 @@ library(xgboost)
 
 set.seed(117)
 
-
 ###Functions
 
 #Returns the number of NAs by column in a data.frame
