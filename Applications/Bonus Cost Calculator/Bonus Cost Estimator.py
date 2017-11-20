@@ -669,4 +669,5 @@ class estimator(object):
         file.close() #Close the file
 
 #Script
-BCE = estimator(location = "F:/Code/Bonus Cost/Casino.txt")
+if __name__ == "__main__":
+    BCE = estimator(location = "F:/Code/Bonus Cost/Casino.txt")
