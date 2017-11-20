@@ -95,5 +95,5 @@ def letsplaygod(n = 500, target = 'The Orville', evol = 'split', mutaprob = 0.01
     print('Evolution type: %s' % (experiment.evol_type))
     print('Time of evolution: %0.2f' % (duration) + ' minutes.')
 
-
-letsplaygod(n = 1000, target = 'The Orville.', evol = 'rand', mutaprob = 0.01)
+if __name__ == "__main__":
+    letsplaygod(n = 1000, target = 'The Orville.', evol = 'rand', mutaprob = 0.01)
