@@ -162,16 +162,17 @@ class queens(object):
             
             pygame.display.update()                   
                 
-    #Draw the board and get the centers
+    #Draw the board
     def board(self):
-        
+        #Draw the squares
         for x in range(1, self.boardLength+1):
             #Create a variable to mix up the coloring
             if x % 2 == 0:
                 cnt = 0
             else:
                 cnt = 1
-                
+            
+
             for y in range(1, self.boardLength+1):
                 if cnt % 2 == 0:
                     pygame.draw.rect(self.screen, 
@@ -187,7 +188,7 @@ class queens(object):
                                      )
                 cnt += 1
  
-        #Border
+        #Draw the Border
         pygame.draw.rect(self.screen, 
                          self.BLACK, 
                          [self.size, 
