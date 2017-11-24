@@ -172,7 +172,6 @@ class queens(object):
             else:
                 cnt = 1
             
-
             for y in range(1, self.boardLength+1):
                 if cnt % 2 == 0:
                     pygame.draw.rect(self.screen, 
