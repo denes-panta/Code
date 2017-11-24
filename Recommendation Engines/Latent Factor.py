@@ -6,7 +6,6 @@
 #    https://www.youtube.com/watch?v=HY3Csl52PfE
 #    https://www.slideshare.net/sscdotopen/latent-factor-models-for-collaborative-filtering
 
-import gc
 import time
 import numpy as np
 import pandas as pd
@@ -17,195 +16,278 @@ from scipy import sparse
 import warnings
 import random
 
-random.seed(117)
+class recommender(object):
 
-
-def error(m_preds, m_origin): 
-    # Error of the prediction
-    # m_preds = predictions
-    # m_origin = original data
-    n = np.count_nonzero(~np.isnan(m_origin)) # Number of non-zero, non NaN values in the original data
-    RMSE = np.round(sqrt(np.nansum((m_preds - m_origin)**2) / n), 4) # Root Mean Squared Error
-    MAE = np.round(np.nansum(np.abs(m_preds - m_origin)) / n, 4) # Mean Absolute Error
-
-    return list([RMSE, MAE])
-
-
-def sparsity(df, cols = []):
-    # Check the sparsity of the dataframe
-    v_n_col = len(df[cols[0]].unique()) # unique values of the col column
-    v_n_row = len(df[cols[1]].unique()) # unique values of the row column
-    v_sparsity = np.round((len(df) / (v_n_col*v_n_row)) * 100, 2) #Calculate the sparsity
-    print('Sparsity: %.2f %%' % (v_sparsity))
-    
-    
-def u_col_print(df, cols = [], verbose = False): 
-    # Returns the unique/max number of elements in specified columns in DF - Whichever is larger
-    # df = dataframe of values
-    # cols = columns that need to be checked
-    # verbose = prints the max and the unique number of items  
-    col_size = [0] * len(cols) # Size of the columns
-
-    for i, lst in enumerate(cols): #Iterate through the dataframe
-        n = df[lst].unique().shape[0] # Number of unique values in the specified column
-        m = max(df[lst]) # Max values in the specified column
-        if verbose == True: #Print details of the columns
-            print('Number of unique items in %s = %d' % (lst, n))
-            print('Largest item %s = %d' % (lst, m) + '\n')
-        if (max(df[lst]) == df[lst].unique().shape[0]): #Check to see if max == number of unique values
-            col_size[i] = df[lst].unique().shape[0] # if True, return number of unique values 
-        else:
-            col_size[i] = max(df[lst]) #if False, return max
-
-    return col_size
-
-
-def cc_matrix(df, col_size = []): 
-    # Creates the user-item matrix       
-    # df = dataframe
-    # col_size = size of the columns
-    matrix = np.zeros((col_size[0], col_size[1])) # Create a zero matrix, dims = input col_size of function u_col_print 
+    def __init__(self, ratings, ratings_col, movies, movies_col, n_records):
+        #Turn the warnings off
+        warnings.filterwarnings('ignore')
         
-    for r in df.itertuples(index = False): #populate the matrix by iterating through the dataframe
-        matrix[r[0]-1, r[1]-1] = r[2]
+        #Set seed
+        random.seed(117)
+        
+        #Read in the data
+        self.df_ratings = pd.read_csv(ratings)
+        self.df_ratings = self.df_ratings.loc[
+                self.df_ratings[ratings_col[0]] <= n_records]
+        self.df_ratings = self.df_ratings.loc[
+                self.df_ratings[ratings_col[1]] <= n_records]
+    
+        self.df_movies = pd.read_csv(movies)
+        self.df_movies = self.df_movies.loc[
+                self.df_movies[movies_col] <= n_records]
+        
+        #Create a train-test split
+        self.df_train, self.df_test = tt_split(self.df_ratings, test_size = 0.7)
+    
+    #Create the ratings sparse matrix
+    def train(self):
+        self.m_train = self.cc_matrix(self.df_train, 
+                                      self.u_col_print(self.df_ratings, 
+                                                       ['userId', 'movieId']))
+        self.m_test = self.cc_matrix(self.df_test, 
+                                     self.u_col_print(self.df_ratings, 
+                                                      ['userId', 'movieId']))
+
+        self.sparsity(self.df_ratings, ['userId', 'movieId'])
+        
+        self.m_preds = self.predict(self.m_train, 
+                                    self.m_test, 
+                                    latent = 2, 
+                                    lr = 1e-2, 
+                                    epoch = 1000, 
+                                    lmbda = 1e-1, 
+                                    timeit = True, 
+                                    verbose = True, 
+                                    plot = True)
+
+    #Make prediction
+    def engine(self, user_id = 1):
+        self.recommend(user_id, self.df_movies)
+    
+    #Error of the prediction
+    def error(self, m_preds, m_origin): 
+        #m_preds = predictions
+        #m_origin = original data
+        
+        #Number of non-zero, non NaN values in the original data
+        n = np.count_nonzero(~np.isnan(m_origin)) 
+        #Root Mean Squared Error
+        RMSE = np.round(sqrt(np.nansum((m_preds - m_origin)**2) / n), 4) 
+        #Mean Absolute Error
+        MAE = np.round(np.nansum(np.abs(m_preds - m_origin)) / n, 4)
+    
+        return list([RMSE, MAE])
+
+    #Check the sparsity of the dataframe
+    def sparsity(self, df, cols = []):
+        v_n_col = len(df[cols[0]].unique()) 
+        v_n_row = len(df[cols[1]].unique())
+        v_sparsity = np.round((len(df) / (v_n_col*v_n_row)) * 100, 2)
+        print('Sparsity: %.2f %%' % (v_sparsity))
+    
+    #Returns the unique/max number of elements in specified columns in DF
+    #Whichever is larger
+    def u_col_print(self, df, cols = [], verbose = False): 
+        #df = dataframe of values
+        #cols = columns that need to be checked
+        #verbose = prints the max and the unique number of items  
+
+        #Size of the columns
+        col_size = [0] * len(cols)
+        
+        for ind, lst in enumerate(cols):
+            n = df[lst].unique().shape[0]
+            m = max(df[lst])
             
-    return matrix #return the populated matrix
-
-
-def csr_rows(csr_matrix): 
-    # Calculate the row indexes of the CSR Matrix
-    l_row = []
+            #Print out the information on request
+            if verbose == True:
+                print('Number of unique items in %s = %d' % (lst, n))
+                print('Largest item %s = %d' % (lst, m) + '\n')
+            
+            if (max(df[lst]) == df[lst].unique().shape[0]):
+                col_size[ind] = df[lst].unique().shape[0] 
+            else:
+                col_size[ind] = max(df[lst])
     
-    for i, v in enumerate(csr_matrix.indptr):
-        try: # Use try-except because the loop return an error for the last item
-            for j in range(csr_matrix.indptr[i+1] - csr_matrix.indptr[i]):
-                l_row.append(i)
-        except:
-            pass
+        return col_size
+
+    #Creates the user-item matrix       
+    def cc_matrix(self, df, col_size = []): 
+        #df = dataframe
+        #col_size = size of the columns
+        
+        #Create the matrix
+        matrix = np.zeros((col_size[0], col_size[1]))
+        
+        #Populate the matrix   
+        for r in df.itertuples(index = False): 
+            matrix[r[0]-1, r[1]-1] = r[2]
+                
+        return matrix
     
-    return l_row
+    #Calculate the row indexes of the CSR Matrix
+    def csr_rows(self, csr_matrix): 
+        l_row = []
+        
+        for i, v in enumerate(csr_matrix.indptr):
+            #Use try-except because the loop return an error for the last item
+            try: 
+                for j in range(csr_matrix.indptr[i+1] - csr_matrix.indptr[i]):
+                    l_row.append(i)
+            except:
+                pass
+        
+        return l_row
 
-
-def predict(train, test, latent = 10, lmbda = 0.1, lr = 0.01, epoch = 10, timeit = False, verbose = False, plot = True):
     #Predict the missing Ratings
-    #matrix = user/item matrix
-    #corr = correlation of columns or rows
-    # k = if integer, the number of nearest neighbours, 
-    #     if float the minimum correlation between the items/users
-    # timeit = to time the function or not
-    # verbose = print iterations and iteration duration
-        
-    if timeit == True: start_time = time.time()
-    if verbose == True: round_time = time.time()
-
-    U = 3 * np.random.rand(train.shape[0], latent) # Create random latent factors for first dimension
-    V = 3 * np.random.rand(train.shape[1], latent) # Create random latent factors for second dimension
-
-    m_error = np.zeros((epoch, 3)) # Create error table
-
-    s_train = sparse.csr_matrix(train) # transform train matrix to sparse
-    train[train == 0] = np.NaN  # replace 0s with NaNs for mean calculations
-    
-    v_Gmean = np.nanmean(train) # Global mean
-    m_Cmean = np.nanmean(train, axis = 0).reshape((1, train.shape[1])) - v_Gmean # Column means
-    m_Cmean[np.isnan(m_Cmean)] = 0
-    m_Rmean = np.nanmean(train, axis = 1).reshape((train.shape[0], 1)) - v_Gmean # Row means
-    m_Rmean[np.isnan(m_Rmean)] = 0
-    
-    train[np.isnan(train)] = 0 # replace NaNs with 0s
-    
-    l_cols = list(s_train.indices) # column indices of sparse matrix
-    l_rows = csr_rows(s_train) # row indices of sparse matrix
-    
-    for e in range(epoch): # run through the number of epochs
-        for s, v in enumerate(s_train): # run through the nmber of row-column pairs in the sparse matrix
-            r = l_rows[s] # row
-            c = l_cols[s] # column
+    def predict(self, train, test, latent, lmbda, 
+                lr, epoch, timeit, verbose, plot):
+        #matrix = user/item matrix
+        #corr = correlation of columns or rows
+        # k = if integer, the number of nearest neighbours, 
+        #     if float the minimum correlation between the items/users
+        # timeit = to time the function or not
+        # verbose = print iterations and iteration duration
             
-            err = s_train[r, c] - (v_Gmean + m_Rmean[r, 0] + m_Cmean[0, c] +  np.dot(U[r, :], V[c, :].T)) # calculate error
-
-            U[r, :] += lr * (err * V[c, :] - lmbda * U[r, :]) # SGD update latent factors
-            V[c, :] += lr * (err * U[r, :] - lmbda * V[c, :]) # SGD update latent factors
-            m_Rmean[r, 0] += lr * (err - lmbda * m_Rmean[r, 0]) # SGD update row mean
-            m_Cmean[0, c] += lr * (err - lmbda * m_Cmean[0, c]) # SGD update col mean
+        if timeit == True: start_time = time.time()
+        if verbose == True: round_time = time.time()
+        
+        #Create random latent factors for first dimension
+        U = 3 * np.random.rand(train.shape[0], latent) 
+        #Create random latent factors for second dimension
+        V = 3 * np.random.rand(train.shape[1], latent) 
+        
+        #Create error table
+        m_error = np.zeros((epoch, 3)) 
+    
+        #Transform train matrix to sparse
+        s_train = sparse.csr_matrix(train) 
+        train[train == 0] = np.NaN
+        
+        #Global mean
+        v_Gmean = np.nanmean(train)
+        #Column means
+        m_Cmean = np.nanmean(train, axis = 0)
+        m_Cmean = m_Cmean.reshape((1, train.shape[1])) - v_Gmean 
+        m_Cmean[np.isnan(m_Cmean)] = 0
+        #Row means
+        m_Rmean = np.nanmean(train, axis = 1)
+        m_Rmean = m_Rmean.reshape((train.shape[0], 1)) - v_Gmean 
+        m_Rmean[np.isnan(m_Rmean)] = 0
+        
+        train[np.isnan(train)] = 0
+        
+        #Column indices of sparse matrix
+        l_cols = list(s_train.indices) 
+        #Row indices of sparse matrix
+        l_rows = self.csr_rows(s_train) 
+        
+        for e in range(epoch):
+            for s, v in enumerate(s_train):
+                r = l_rows[s]
+                c = l_cols[s]
+                
+                #Calculate error
+                err = s_train[r, c] - \
+                    (v_Gmean + m_Rmean[r, 0] + \
+                     m_Cmean[0, c] + \
+                     np.dot(U[r, :], V[c, :].T)) 
+                
+                #SGD update latent factors
+                U[r, :] += lr * (err * V[c, :] - lmbda * U[r, :]) 
+                V[c, :] += lr * (err * U[r, :] - lmbda * V[c, :]) 
+                #SGD update row mean
+                m_Rmean[r, 0] += lr * (err - lmbda * m_Rmean[r, 0])
+                #SGD update col mean
+                m_Cmean[0, c] += lr * (err - lmbda * m_Cmean[0, c]) 
+                
+            m_preds = np.dot(U, V.T)
             
-        m_preds = np.dot(U, V.T) # Dot product of U and V Transposed
+            #Update error table
+            m_error[e, 0] = e 
+            m_error[e, 1] = self.error(m_preds, self.m_train)[0]
+            m_error[e, 2] = self.error(m_preds, self.m_test)[0]
+            
+            # Print Duration after every 10% Done
+            if (verbose == True) and (e % (epoch / 10) == (epoch / 10)-1): 
+                print('Completed: ' + str((e+1)/epoch*100) + \
+                      ' % - Duration: ' + \
+                      str(np.round((time.time() - round_time) / 60, 3)) + \
+                      ' minutes')
+                round_time = time.time()
         
-        m_error[e, 0] = e # Update error table
-        m_error[e, 1] = error(m_preds, m_train)[0] # Update error table
-        m_error[e, 2] = error(m_preds, m_test)[0] # Update error table
+        #Set too high ratings to the Max rating
+        m_preds[m_preds > 5] = 5 
+        #Set too low ratings to the Min rating
+        m_preds[m_preds < 1] = 1 
+    
+        m_preds = np.round(m_preds*2) / 2
         
-        if (verbose == True) and (e % (epoch / 10) == (epoch / 10)-1): # Print Duration after every 10% Done
-            print('Completed: ' + str((e+1)/epoch*100) + ' % - Duration: ' + str(np.round((time.time() - round_time) / 60, 3)) + ' minutes')
-            round_time = time.time()
-    
+        #Print the total run duration of the function
+        if timeit == True: 
+            elapsed_time = time.time() - start_time
+            print('Total running time: ' + \
+                  str(np.round(elapsed_time / 60, 2)) + ' minutes' + '\n')
 
-    m_preds[m_preds > 5] = 5 # Set too high ratings to the Max rating
-    m_preds[m_preds < 1] = 1 # Set too low ratings to the Min rating
-
-    m_preds = np.round(m_preds*2) / 2 # round to the nearest .5
-
-    if timeit == True: # Print the total run duration of the function
-        elapsed_time = time.time() - start_time
-        print('Total running time: ' + str(np.round(elapsed_time / 60, 2)) + ' minutes' + '\n')
-    
-    print('Train RMSE: ' + str(error(m_preds, train)[0]) + '| Train MAE: ' + str(error(m_preds, train)[1])) # printtrain Error
-    print('Test RMSE: ' + str(error(m_preds, test)[0]) + '| Test MAE: ' + str(error(m_preds, test)[1])) # print test Error
-    
-    if plot == True: # Plot errors
-        plt.plot(m_error[:, 0], m_error[:, 1], 'b', label = 'Train')
-        plt.plot(m_error[:, 0], m_error[:, 2], 'r', label = 'Test')
-        plt.xlabel('Epochs')
-        plt.ylabel('Error')
-        plt.title('Error plot')
-        plt.legend(loc = 'upper right')
+        #Print train Error
+        print('Train RMSE: ' + str(self.error(m_preds, train)[0]) + \
+              '| Train MAE: ' + str(self.error(m_preds, train)[1]))
+        #Print test Error
+        print('Test RMSE: ' + str(self.error(m_preds, test)[0]) + \
+              '| Test MAE: ' + str(self.error(m_preds, test)[1])) 
         
-    return m_preds # return predictions
+        #Plot errors
+        if plot == True: 
+            plt.plot(m_error[:, 0], m_error[:, 1], 'b', label = 'Train')
+            plt.plot(m_error[:, 0], m_error[:, 2], 'r', label = 'Test')
+            plt.xlabel('Epochs')
+            plt.ylabel('Error')
+            plt.title('Error plot')
+            plt.legend(loc = 'upper right')
+            
+        return m_preds
 
+    def recommend(self, user_id, names):
+        #Wathed movies ratings for the user
+        df_past = pd.DataFrame(self.m_train[user_id, :])
+        df_past[df_past == 0] = np.NaN 
+        #Predicted ratings for the user
+        df_user = pd.DataFrame(self.m_preds[user_id, :]) 
+        
+        #Filtered ratings without NaN
+        l_past = df_past.index[~np.isnan(df_past.iloc[:, 0])].tolist()
+        #Tier one suggestions
+        l_top1 = df_user.loc[(~df_user.index[:].isin(l_past)) & 
+                             (df_user.iloc[:, 0] >= 4.5), 0].index[:].tolist() 
+        #Tier two suggestions
+        l_top2 = df_user.loc[(~df_user.index[:].isin(l_past)) & 
+                             (df_user.iloc[:, 0] >= 3.5) & 
+                             (df_user.iloc[:, 0] <= 4.0), 0].index[:].tolist() 
+        
+        #Tier one recommendations
+        v_t1r = len(l_top1) 
+        if v_t1r > 5: v_t1r = 5
+        #Tier two recommendations
+        v_t2r = len(l_top2) 
+        if v_t2r > 5: v_t2r = 10
+        
+        #Print suggestions
+        print('Top suggestions for user: ' + str(user_id)) 
+        print(names.iloc[names.index[names.iloc[:, 0].isin(
+                list(random.sample(l_top1, v_t1r)))], [1, 2]])
+        print('')
+        print('User "%d" might also like: ' % (user_id))
+        print(names.iloc[names.index[names.iloc[:, 0].isin(
+                list(random.sample(l_top2, v_t2r)))], [1, 2]])
+        
+        return list([l_top1, l_top2])
 
-def recommend(user_id, train, preds, names):
-    df_past = pd.DataFrame(train[user_id, :]) # Wathed movies ratings for the user
-    df_past[df_past == 0] = np.NaN 
-    df_user = pd.DataFrame(preds[user_id, :]) # predicted ratings for the user
-
-    l_past = df_past.index[~np.isnan(df_past.iloc[:, 0])].tolist() #filtered ratings without NaN
-    l_top1 = df_user.loc[(~df_user.index[:].isin(l_past)) & (df_user.iloc[:, 0] >= 4.5), 0].index[:].tolist() # Tier one suggestions
-    l_top2 = df_user.loc[(~df_user.index[:].isin(l_past)) & (df_user.iloc[:, 0] >= 3.5) & (df_user.iloc[:, 0] <= 4.0), 0].index[:].tolist() # Tier two suggestions
-    
-    v_t1r = len(l_top1) # tier one recommendations
-    if v_t1r > 5: v_t1r = 5
-    v_t2r = len(l_top2) # tier two recommendations
-    if v_t2r > 5: v_t2r = 10
-    
-    print('Top suggestions for user: ' + str(user_id)) # print suggestions
-    print(names.iloc[names.index[names.iloc[:, 0].isin(list(random.sample(l_top1, v_t1r)))], [1, 2]])
-    print('')
-    print('User "%d" might also like: ' % (user_id))
-    print(names.iloc[names.index[names.iloc[:, 0].isin(list(random.sample(l_top2, v_t2r)))], [1, 2]])
-    
-    return list([l_top1, l_top2]) # Return the suggested movie indices
-
-
-#Taking only the a first X Users and the first Y Movies, because the solution doesn't scale well to large datasets.
-warnings.filterwarnings('ignore')
-
-df_ratings = pd.read_csv("F:/Code/Recommendation System/ratings.csv")
-df_ratings = df_ratings.loc[df_ratings['userId'] <= 2000]
-df_ratings = df_ratings.loc[df_ratings['movieId'] <= 2000]
-
-df_movies = pd.read_csv("F:/Code/Recommendation System/movies.csv")
-df_movies = df_movies.loc[df_movies['movieId'] <= 2000]
-
-df_train, df_test = tt_split(df_ratings, test_size = 0.7)
-
-m_train = cc_matrix(df_train, u_col_print(df_ratings, ['userId', 'movieId']))
-m_test = cc_matrix(df_test, u_col_print(df_ratings, ['userId', 'movieId']))
-
-sparsity(df_ratings, ['userId', 'movieId'])
-
-del df_ratings, df_test, df_train
-gc.collect()
-
-m_preds = predict(m_train, m_test, latent = 2, lr = 1e-2, epoch = 1000, lmbda = 1e-1, timeit = True, verbose = True, plot = True)
-
-
+if __name__ == "__main__":
+    latfact = recommender(ratings = "F:/Code/Recommendation System/ratings.csv",
+                          ratings_col = ['userId', 'movieId'],
+                          movies = "F:/Code/Recommendation System/movies.csv",
+                          movies_col = 'movieId',
+                          n_records = 2000
+                          )
+    latfact.train()
+    latfact.engine(user_id = 42)
