@@ -58,87 +58,11 @@ class queens(object):
         self.scores = self.calc_scores() #Calculate the initial scores
 
         #Static Labels
-        l_start = self.fnt.render("Press 's' to start the evolution", 
-                                  True, 
-                                  (self.BLACK))
-        self.screen.blit(l_start, (50, 460))
-        
-        l_reset = self.fnt.render("Press 'r' to reset to starting point", 
-                                  True, 
-                                  (self.BLACK))
-        self.screen.blit(l_reset, (50, 480))
-        
-        l_quit = self.fnt.render("Press 'q' to quit the application", 
-                                 True, 
-                                 (self.BLACK))
-        self.screen.blit(l_quit, (50, 500))
-        
-        l_total = self.fnt.render("%d possible setups" % (self.bruteforce), 
-                                  True, 
-                                  (self.BLACK))
-        self.screen.blit(l_total, (100, 550))
-        
-        l_input = self.fnt.render("Input variables", 
-                                  True, 
-                                  (self.BLACK))
-        self.screen.blit(l_input, (460, 50))
-        
-        l_pop = self.fnt.render("Population size: %d" % (self.n), 
-                                True, 
-                                (self.BLACK))
-        self.screen.blit(l_pop, (460, 80))
-        
-        l_genlim = self.fnt.render("Generation limit: %d" % (self.max_generation), 
-                                   True, 
-                                   (self.BLACK))
-        self.screen.blit(l_genlim, (460, 100))
-        
-        l_mutalim = self.fnt.render("Mutation limit: %.1f%%" % (self.max_mutation * 100), 
-                                    True, 
-                                    (self.BLACK))
-        self.screen.blit(l_mutalim, (460, 120))
-        
-        l_weight = self.fnt.render("Exponent weight: %d" % (self.w), 
-                                   True, 
-                                   (self.BLACK))
-        self.screen.blit(l_weight, (460, 140))
-        
-        l_mutalim = self.fnt.render("Display every %d generation" % (self.display_generation), 
-                                    True, 
-                                    (self.BLACK))
-        self.screen.blit(l_mutalim, (460, 160))
-
-        l_evol = self.fnt.render("Evolutionary variables", 
-                                 True, 
-                                 (self.BLACK))
-        self.screen.blit(l_evol, (460, 250))
-
+        self.static_labels()
 
         #Varing Labels
-        l_curgen = self.fnt.render("Current generation: %d" % (self.generation), 
-                                   True, 
-                                   (self.BLACK))
-        self.screen.blit(l_curgen, (460, 280))
-        
-        l_curmuta = self.fnt.render("Current mutation rate: %.1f%%" % (self.mutation * 100), 
-                                    True, 
-                                    (self.BLACK))
-        self.screen.blit(l_curmuta, (460, 300))
-        
-        l_retries = self.fnt.render("Number of rounds: %d" % (self.restart), 
-                                    True, 
-                                    (self.BLACK))
-        self.screen.blit(l_retries, (460, 320))
-        
-        l_fitscore = self.fnt.render("Current best score: %d" % (self.paragon_is[1]), 
-                                     True, 
-                                     (self.BLACK))
-        self.screen.blit(l_fitscore, (460, 340))
-        
-        l_status = self.fnt.render("Current status: 'Stopped'", 
-                                   True, 
-                                   (self.BLACK))
-        self.screen.blit(l_status, (460, 400))
+        self.labels()
+        self.status_label("Stopped")
 
         #Initiate the board and the starting queen positions
         self.board()
@@ -168,11 +92,8 @@ class queens(object):
                     if (event.key == pygame.K_s):
                         self.start = True
                         
-                        pygame.draw.rect(self.screen, self.WHITE, [460, 400, 340, 20])
-                        l_status = self.fnt.render("Current status: 'Searching'", 
-                                                   True, 
-                                                   (self.BLACK))
-                        self.screen.blit(l_status, (460, 400))
+                        #Update label
+                        self.status_label("Searching")
                         
                         #Record time
                         self.starttime = time.time()
@@ -197,11 +118,7 @@ class queens(object):
 
                         #Update labels
                         self.labels()
-                        pygame.draw.rect(self.screen, self.WHITE, [460, 400, 340, 20])
-                        l_status = self.fnt.render("Current status: 'Stopped'", 
-                                                   True, 
-                                                   (self.BLACK))
-                        self.screen.blit(l_status, (460, 400))
+                        self.status_label("Stopped")
                         
                         pygame.draw.rect(self.screen, self.WHITE, [460, 420, 340, 20])
                         
@@ -231,17 +148,13 @@ class queens(object):
                     self.board()
                     self.display_paragon()     
                     self.done = True
-                
-                    pygame.draw.rect(self.screen, self.WHITE, [460, 400, 340, 20])
-                    l_status = self.fnt.render("Current status: 'Done'", 
+                    self.status_label("Done")
+                    
+                    #Display timer
+                    l_timer = self.fnt.render("Runtime: %.2f minutes " % (duration/60), 
                                                True, 
                                                (self.BLACK))
-                    self.screen.blit(l_status, (460, 400))
-
-                    l_status = self.fnt.render("Runtime: %.2f minutes " % (duration/60), 
-                                               True, 
-                                               (self.BLACK))
-                    self.screen.blit(l_status, (460, 420))
+                    self.screen.blit(l_timer, (460, 420))
                 
                 #Update labels and mutation rate
                 self.labels()
@@ -294,6 +207,11 @@ class queens(object):
         for speciment in range(self.n):
             self.population.append([np.random.choice(self.centers, size = 8), 
                                     np.random.choice(self.centers, size = 8)])           
+    
+    #Put up the pieces on the board
+    def init_queens(self):
+        for piece in range(1, 9):
+            self.screen.blit(self.queen, (piece*self.size, self.size))
     
     #Display the speciment with the best score
     def display_paragon(self):
@@ -350,21 +268,7 @@ class queens(object):
         new_scores = np.asarray(new_scores)
         rel_scores = new_scores / score_sum
 
-        return rel_scores.tolist()
-    
-    #Put up the pieces on the board
-    def init_queens(self):
-        for piece in range(1, 9):
-            self.screen.blit(self.queen, (piece*self.size, self.size))
-    
-    #Change mutation rate to prevent inbreading or rapid mutation
-    def mutation_rate(self):
-        length = len(set(self.scores))
-        
-        if length < 12 and self.mutation < (self.max_mutation - 0.01):
-            self.mutation += 0.01
-        if length >= 12 and self.mutation > 0.01:
-            self.mutation -= 0.01        
+        return rel_scores.tolist()      
         
     #Procreation
     def crossover(self):
@@ -402,6 +306,23 @@ class queens(object):
             new_generation.append(children)
     
         return new_generation
+
+    #Change mutation rate to prevent inbreading or rapid mutation
+    def mutation_rate(self):
+        length = len(set(self.scores))
+        
+        if length < 12 and self.mutation < (self.max_mutation - 0.01):
+            self.mutation += 0.01
+        if length >= 12 and self.mutation > 0.01:
+            self.mutation -= 0.01  
+    
+    #Status label
+    def status_label(self, status):
+        pygame.draw.rect(self.screen, self.WHITE, [460, 400, 340, 20])
+        l_status = self.fnt.render("Current status: %s" % (status), 
+                                   True, 
+                                   (self.BLACK))
+        self.screen.blit(l_status, (460, 400))
     
     #Update labels
     def labels(self):
@@ -428,6 +349,63 @@ class queens(object):
                                      True, 
                                      (self.BLACK))
         self.screen.blit(l_fitscore, (460, 340))
+    
+    #Static labels
+    def static_labels(self):
+        l_start = self.fnt.render("Press 's' to start the evolution", 
+                                  True, 
+                                  (self.BLACK))
+        self.screen.blit(l_start, (50, 460))
+        
+        l_reset = self.fnt.render("Press 'r' to reset to starting point", 
+                                  True, 
+                                  (self.BLACK))
+        self.screen.blit(l_reset, (50, 480))
+        
+        l_quit = self.fnt.render("Press 'q' to quit the application", 
+                                 True, 
+                                 (self.BLACK))
+        self.screen.blit(l_quit, (50, 500))
+        
+        l_total = self.fnt.render("%d possible setups" % (self.bruteforce), 
+                                  True, 
+                                  (self.BLACK))
+        self.screen.blit(l_total, (100, 550))
+        
+        l_input = self.fnt.render("Input variables", 
+                                  True, 
+                                  (self.BLACK))
+        self.screen.blit(l_input, (460, 50))
+        
+        l_pop = self.fnt.render("Population size: %d" % (self.n), 
+                                True, 
+                                (self.BLACK))
+        self.screen.blit(l_pop, (460, 80))
+        
+        l_genlim = self.fnt.render("Generation limit: %d" % (self.max_generation), 
+                                   True, 
+                                   (self.BLACK))
+        self.screen.blit(l_genlim, (460, 100))
+        
+        l_mutalim = self.fnt.render("Mutation limit: %.1f%%" % (self.max_mutation * 100), 
+                                    True, 
+                                    (self.BLACK))
+        self.screen.blit(l_mutalim, (460, 120))
+        
+        l_weight = self.fnt.render("Exponent weight: %d" % (self.w), 
+                                   True, 
+                                   (self.BLACK))
+        self.screen.blit(l_weight, (460, 140))
+        
+        l_mutalim = self.fnt.render("Display every %d generation" % (self.display_generation), 
+                                    True, 
+                                    (self.BLACK))
+        self.screen.blit(l_mutalim, (460, 160))
+
+        l_evol = self.fnt.render("Evolutionary variables", 
+                                 True, 
+                                 (self.BLACK))
+        self.screen.blit(l_evol, (460, 250))
 
 
 if __name__ == "__main__":
