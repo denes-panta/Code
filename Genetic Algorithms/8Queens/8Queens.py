@@ -90,13 +90,14 @@ class queens(object):
                 #Event - Start - Button s
                 if event.type == pygame.KEYUP:
                     if (event.key == pygame.K_s):
-                        self.start = True
-                        
-                        #Update label
-                        self.status_label("Searching")
-                        
-                        #Record time
-                        self.starttime = time.time()
+                        if self.start == False:
+                            self.start = True
+                            
+                            #Update label
+                            self.status_label("Searching")
+                            
+                            #Record time
+                            self.starttime = time.time()
 
                 #Event - Reset - Button r
                 if event.type == pygame.KEYUP:
@@ -265,10 +266,11 @@ class queens(object):
         
         #Calculate the relative probabilities
         score_sum = sum(new_scores)
-        new_scores = np.asarray(new_scores)
-        rel_scores = new_scores / score_sum
+        
+        for index, score in enumerate(new_scores):
+            new_scores[index] = score / score_sum
 
-        return rel_scores.tolist()      
+        return new_scores      
         
     #Procreation
     def crossover(self):
@@ -397,7 +399,7 @@ class queens(object):
                                    (self.BLACK))
         self.screen.blit(l_weight, (460, 140))
         
-        l_mutalim = self.fnt.render("Display every %d generation" % (self.display_generation), 
+        l_mutalim = self.fnt.render("Display every %d generations" % (self.display_generation), 
                                     True, 
                                     (self.BLACK))
         self.screen.blit(l_mutalim, (460, 160))
