@@ -3,97 +3,141 @@ import string
 import numpy as np
 import time
 
-class population: #Population - single gender species
-    def __init__(self, n = 100, target = 'Sentence.'):
-        # n: number of species in the population
-        # target: the target, towards the population tries to evolve
-        self.n = n #Population size
-        self.fit = [0] * n #Starting Fittness Scores
-        self.apex = list([target, len(target)]) #Target for the evolution
-        self.cells = list(string.ascii_letters) + list(string.digits) + list(' ') + list('!@#$%&*()[]{}=_-/-+.\",') #Building blocks of the String Species
-        self.population = [] #Empty list for the population
+class population(object): #Population - single gender species
+
+    def __init__(self, n, target, evol = 'split', mutaprob = 0.01):
+
+        #Population size
+        self.n = n 
+        #Evolution type
+        self.evol_type = evol
+        #Mutation probabilty
+        self.mutation = mutaprob 
+        #Starting Fittness Scores
+        self.fit = [0] * n 
+        #Target for the evolution
+        self.apex = list([target, len(target)]) 
+        #Building blocks of the String Species
+        self.cells = list(string.ascii_letters) + \
+                     list(string.digits) + \
+                     list(' ') + \
+                     list('!@#$%&*()[]{}=_-/-+.\",') 
+        #Empty list for the population
+        self.population = [] 
+        #Generation counter
+        self.generation = 0
         
-        for speciment in range(n): #Creating the initial population of "String creatures"
-            self.population.append(''.join(random.sample(self.cells, len(target))))
- 
+        #Creating the initial population of "String creatures"
+        for speciment in range(n): 
+            self.population.append(''.join(random.sample(self.cells, 
+                                                         len(target))))
     
-    def fitness_function(self, score, max_score): #Calculates the Fitness Score
+    #Does the evolving
+    def engine(self):
+        start_time = time.time()
+        
+        while self.paragon() != self.apex[0]:
+            self.fit_scores()
+            self.population = self.evolution()
+            self.generation += 1
+        
+            #Print Status of the evolution
+            if (self.generation+1) % 10 == 0: 
+                    print('Generation: %d: ' % (self.generation+1) + \
+                          str(self.paragon()))
+            
+        duration = (time.time() - start_time) / 60
+        
+        #Print the evolution report
+        print('')
+        print('Final Speciment: %s' % (self.paragon()))
+        print('Number of Generations: %d' % (self.generation))
+        print('Population size: %d' % (self.n))
+        print('Mutation probability: %0.1f%%' % (self.mutation * 100))
+        print('Number of parents: %d' % (self.k_parent))
+        print('Evolution type: %s' % (self.evol_type))
+        print('Time of evolution: %0.2f' % (duration) + ' minutes.')
+    
+    #Calculates the Fitness Score
+    def fitness_function(self, score, max_score): 
         #score = fitness score
         #max_score = score of the perfect species / length of the target
         result = score**2/max_score
+
         return result
     
-    
-    def fit_scores(self): #Calculates the Fittness Scores for each species
-        self.fit = [] # Empty list for Fittness Scores
+    #Calculates the Fittness Scores for each species
+    def fit_scores(self):
+        self.fit = [] 
         
-        for i, speciment in enumerate(self.population): #Evaluate each species of the population
-            score = 0 # Initial score for the Speciment
-            for cell_t, cell_c in zip(list(self.apex[0]), speciment): #Compare each cell of each Species to their respective target cells
+        for i, speciment in enumerate(self.population):
+            score = 0 
+            
+            for cell_t, cell_c in zip(list(self.apex[0]), speciment): 
                 if cell_t == cell_c: score += 1
-            self.fit.append(self.fitness_function(score, self.apex[1])) #Call the fitness function to calculate the Fitness Score
+            
+            self.fit.append(self.fitness_function(score, self.apex[1])) 
     
-    
-    def evolution(self, evol = 'split', k = 2, mutaprob = 0.01):
-        # evol: the type of evolution
-        # k: number of species needed for procreation
-        # mutaprob: chance of mutation
-        new_generation = [] #List for the Next Generation
-        self.mutaprob = mutaprob #mutation probability
-        self.k_parent = k #Number of parents needed for reproduction
-        self.evol_type = evol # evolution type
-        self.rel_prob = np.nan_to_num(self.fit / np.nansum(self.fit)).tolist() #Calculating the relative probability based on Fitness Scores
-        candidates = [] #Candidate pool for procreation
+    #Evolution    
+    def evolution(self):
+        new_generation = []
+
+        #Number of parents needed for reproduction
+        self.k_parent = 2 
         
-        for speciments in range(self.n): #randomly chooses two speciments based on the relative probabilities
-            candidates = np.random.choice(self.population, self.k_parent, p = self.rel_prob, replace = False) #Selects k number of candidates based on relative probability
+        #Calculating the relative probability based on Fitness Scores
+        self.rel_prob = np.nan_to_num(self.fit / np.nansum(self.fit)).tolist()
+        
+        #Candidate pool for procreation
+        candidates = [] 
+    
+        #Randomly chooses two speciments based on the relative probabilities
+        for speciments in range(self.n): 
             
-            if self.evol_type == 'split': #Evolving using the split method
-                splits = int(np.round(self.apex[1]/self.k_parent)) #mid point of the String Speciment
-                child = candidates[0][0:splits] + candidates[1][splits:self.apex[1]] #Takes the first and last half of the parents, respectively
+            #Selects k number of candidates based on relative probability
+            candidates = np.random.choice(self.population, 
+                                          self.k_parent, 
+                                          p = self.rel_prob, 
+                                          replace = False) 
             
-            if self.evol_type == 'rand': #Evolve using random genes of parents
+            #Evolve using the split method
+            if self.evol_type == 'split': 
+                splits = int(np.round(self.apex[1]/self.k_parent))
+                child = candidates[0][0:splits] + \
+                        candidates[1][splits:self.apex[1]]
+            
+            #Evolve using random genes of parents
+            if self.evol_type == 'rand': 
                 child = candidates[0]
-                parent = np.random.binomial(1, 0.5, self.apex[1]) #randomly selecting which cell comes from which parent
-                for cell in range(self.apex[1]):  #Takes random genes from each parent
+                parent = np.random.binomial(1, 0.5, self.apex[1])
+                
+                #Takes random genes from each parent
+                for cell in range(self.apex[1]):  
                     list(child)[cell] = list(candidates[parent[cell]])[cell]
                 child = ''.join(child)    
-                
-            for i, cell in enumerate(child): #Random mutation based on the mutaprob
-                if np.random.binomial(1, self.mutaprob, 1) == 1:
+            
+            #Random mutation based on the mutaprob
+            for i, cell in enumerate(child): 
+                if np.random.binomial(1, self.mutation, 1) == 1:
                     lab = list(child)
                     lab[i] = ''.join(random.sample(self.cells, 1))
                     child = ''.join(lab)
                     
-            new_generation.append(child) #Append the new generation with the mutated child
+            new_generation.append(child)
+            
         return new_generation       
 
-
-    def paragon(self): #Returnes the spl;;;eciment with the highest Fitness Score.
+    #Returns the speciment with the highest Fitness Score.
+    def paragon(self): 
         fit_scores = np.asarray(self.fit)
         index = np.argmax(fit_scores)
-        return self.population[index]
-      
         
-#Script
-def letsplaygod(n = 500, target = 'The Orville', evol = 'split', mutaprob = 0.01):
-    start_time = time.time()
-    experiment = population(n = n, target = target)
-    generation = 0
-    while experiment.paragon() != experiment.apex[0]:
-        experiment.fit_scores()
-        experiment.population = experiment.evolution(evol = evol, k = 2, mutaprob = mutaprob) #This version only works with k = 2
-        generation += 1
-        if (generation+1) % 10 == 0: print('Generation: %d: ' % (generation+1) + str(experiment.paragon()))
-    duration = (time.time() - start_time)/60
-    print('')
-    print('Final Species: %s' % (experiment.paragon()))
-    print('Number of Generations: %d' % (generation))
-    print('Population size: %d' % (experiment.n))
-    print('Mutation chance: %d' % (experiment.mutaprob*100))
-    print('Number of parents: %d' % (experiment.k_parent))
-    print('Evolution type: %s' % (experiment.evol_type))
-    print('Time of evolution: %0.2f' % (duration) + ' minutes.')
+        return self.population[index]
+
 
 if __name__ == "__main__":
-    letsplaygod(n = 1000, target = 'The Orville.', evol = 'rand', mutaprob = 0.01)
+    strevol = population(n = 500, 
+                         target = 'The Orville.', 
+                         evol = 'rand', 
+                         mutaprob = 0.01)
+    strevol.engine()
