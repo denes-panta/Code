@@ -11,7 +11,7 @@ class queens(object):
     BLACK = (0, 0, 0)
     
     generation = 0 #geneartion count
-    restart = 0 #Number of times the population is initialised
+    restart = 1 #Number of times the population is initialised
     
     size = 50 #size of the squers
     boardLength = 8 #number of squares on the boards
@@ -24,6 +24,7 @@ class queens(object):
     
     max_score = 28 #28, because 2 under 8 = 8*7/2
     mutation = 0.01 #Initial mutation probability
+    prob_27 = 0.0 #Proportions of near solutions
     
     #The total possible values calculated for reference
     bruteforce = int(math.factorial(64) / (math.factorial(8) * math.factorial(56)))
@@ -34,13 +35,13 @@ class queens(object):
     
     #np.random.seed(117)
     
-    def __init__(self, pop, max_mutaProb, weight, max_gen, display):
+    def __init__(self, pop, max_mutaProb, exponent, max_gen, display):
         #Input variables
         self.n = pop #size of the population
         self.max_mutation = max_mutaProb #ceiling of mutation probability
         self.max_generation = max_gen #Population reinitialised after gen: max_gen
         self.display_generation = display #Every n-th generation displayed
-        self.w = weight #The power weight for the fitness scores
+        self.exp = exponent #The exponent for the fitness scores
         
         #Initialise the pyGame Display
         pygame.init()
@@ -106,7 +107,7 @@ class queens(object):
                         self.start = False
                         self.done = False
                         self.generation = 0
-                        self.restart = 0
+                        self.restart = 1
                         self.mutation = 0.01
                         
                         #Reinitialise the board and starting positions
@@ -125,15 +126,16 @@ class queens(object):
                         
             #The actual evolutions         
             if self.done == False and self.start == True:
+
+                #Create new population and calculate fittness scores and muta-rate
+                self.mutation_rate()
+                self.population = self.crossover()
+                self.scores = self.calc_scores()
                 
                 #Check for generation limit
                 if self.generation % self.max_generation == 0:
                     self.restart += 1
                     self.init_pop()
-                
-                #Craete new population and calculate fittness scores
-                self.population = self.crossover()
-                self.scores = self.calc_scores()
                 
                 #Display best speciment for every n-th generation
                 if self.generation % self.display_generation == 0:
@@ -156,11 +158,10 @@ class queens(object):
                                                True, 
                                                (self.BLACK))
                     self.screen.blit(l_timer, (460, 420))
-                
-                #Update labels and mutation rate
+
+                #Update labels
                 self.labels()
-                self.mutation_rate()
-            
+
             pygame.display.update()                   
                 
     #Draw the board
@@ -228,6 +229,7 @@ class queens(object):
 
         new_scores = [] #Temporary array for the new scores
         self.paragon_is = [0, 0] #Reset the paragon index and score to 0
+        count_27 = 0
         
         #Calculate the scores for each speciment, 
         #using the board as a coordinate system
@@ -255,18 +257,27 @@ class queens(object):
             score += abs(len(cross1) - len(set(cross1)))
             score += abs(len(cross2) - len(set(cross2)))
             
-            #Increase the score to the power of the input weight
+            score = (self.max_score - score)
+            
+            #Count the near solutions
+            if score == 27:
+                count_27 += 1
+            
+            #Increase the score to the power of the input exponent
             #In order to select suitable parents with higher probability
-            new_scores.append((self.max_score - score)**self.w)
+            new_scores.append(score**self.exp)
             
             #Save the highest score for future reference
-            if (self.max_score - score) > self.paragon_is[1]:
+            if score > self.paragon_is[1]:
                 self.paragon_is[0] = speciment            
-                self.paragon_is[1] = int(self.max_score - score)
+                self.paragon_is[1] = int(score)
+ 
+       #Get proportion on near perfect solutions       
+        self.prob_27 = count_27 / self.n
         
         #Calculate the relative probabilities
         score_sum = sum(new_scores)
-        
+            
         for index, score in enumerate(new_scores):
             new_scores[index] = score / score_sum
 
@@ -309,15 +320,26 @@ class queens(object):
     
         return new_generation
 
-    #Change mutation rate to prevent inbreading or rapid mutation
+    #Automatic tuning of mutation rate
     def mutation_rate(self):
         length = len(set(self.scores))
         
+        #Set the mutation rate to within the regular range
+        if self.mutation > self.max_mutation:
+            self.mutation = 0.05
+        
+        #Increase/Decrease the mutation rate to keep diverse population
         if length < 12 and self.mutation < (self.max_mutation - 0.01):
             self.mutation += 0.01
         if length >= 12 and self.mutation > 0.01:
             self.mutation -= 0.01  
-    
+            
+        #Increase mutation rate, in case of being stuck at local optimum
+        if self.prob_27 > 0.05:
+            self.mutation = self.prob_27 * (self.generation / (self.restart * 200))
+            if self.mutation < self.max_mutation:
+                self.mutation = 0.5
+                
     #Status label
     def status_label(self, status):
         pygame.draw.rect(self.screen, self.WHITE, [460, 400, 340, 20])
@@ -394,10 +416,10 @@ class queens(object):
                                     (self.BLACK))
         self.screen.blit(l_mutalim, (460, 120))
         
-        l_weight = self.fnt.render("Exponent weight: %d" % (self.w), 
+        l_exp = self.fnt.render("Fittness score exponent: %d" % (self.exp), 
                                    True, 
                                    (self.BLACK))
-        self.screen.blit(l_weight, (460, 140))
+        self.screen.blit(l_exp, (460, 140))
         
         l_mutalim = self.fnt.render("Display every %d generations" % (self.display_generation), 
                                     True, 
@@ -413,8 +435,7 @@ class queens(object):
 if __name__ == "__main__":
     game = queens(pop = 300, 
                   max_mutaProb = 0.1,
-                  weight = 4,
-                  max_gen = 500,
+                  exponent = 4,
+                  max_gen = 1000,
                   display = 1
                   )
-    
