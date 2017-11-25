@@ -117,7 +117,8 @@ class sentiment(object):
         #Define the classifier
         classifier = nltk.NaiveBayesClassifier.train(self.feats_train) 
         #Print the test accuracy
-        print("Testing Accuracy (NBC): ", (nltk.classify.accuracy(classifier, self.feats_test)) * 100) 
+        print("Testing Accuracy (NBC): ", 
+              (nltk.classify.accuracy(classifier, self.feats_test)) * 100) 
         
         #return the most informative features
         return classifier.most_informative_features(25)
