@@ -1,4 +1,4 @@
-import pygame
+import pygame as pg
 import numpy as np
 import math
 import time
@@ -10,53 +10,75 @@ class queens(object):
     LIGHT = (182, 155, 76)
     BLACK = (0, 0, 0)
     
-    generation = 0 #geneartion count
-    restart = 1 #Number of times the population is initialised
-    
-    size = 50 #size of the squers
-    boardLength = 8 #number of squares on the boards
+    #Geneartion count
+    generation = 0
+    #Number of times the population is initialised
+    restart = 1
+    #Size of the squers
+    size = 50
+    #Number of squares on the boards
+    boardLength = 8 
+    #Starttime for the timer
     starttime = 0
-    
-    centers = [] #list for square centres        
-    population = [] #population of the species
-    scores = [] #fittness scores for the species
-    paragon_is = [0, 0] #paragon index and score 
-    
-    max_score = 28 #28, because 2 under 8 = 8*7/2
-    mutation = 0.01 #Initial mutation probability
-    prob_27 = 0.0 #Proportions of near solutions
+    #List for square coordinates    
+    centers = []    
+    #Population of the species     
+    population = []
+    #Fitness scores for the species
+    scores = [] 
+    #Paragon index and score
+    paragon_is = [0, 0]  
+    #Maximum fitnes score = 28, because 2 under 8 = 8*7/2
+    max_score = 28
+    #Initial mutation probability
+    mutation = 0.01
+    #Proportions of near solutions
+    prob_27 = 0.0 
+
     
     #The total possible values calculated for reference
     bruteforce = int(math.factorial(64) / (math.factorial(8) * math.factorial(56)))
     
     #Import and resize the image of the queen    
-    queen = pygame.image.load("F:/Code/Genetic Algorithms/8Queens/queen.png")
-    queen = pygame.transform.scale(queen, (50, 50))
+    queen = pg.image.load("F:/Code/Genetic Algorithms/8Queens/queen.png")
+    queen = pg.transform.scale(queen, (50, 50))
     
     #np.random.seed(117)
     
-    def __init__(self, pop, max_mutaProb, exponent, max_gen, display):
+    def __init__(self, pop, max_mutaProb, max_spike, exponent, max_gen, display):
         #Input variables
-        self.n = pop #size of the population
-        self.max_mutation = max_mutaProb #ceiling of mutation probability
-        self.max_generation = max_gen #Population reinitialised after gen: max_gen
-        self.display_generation = display #Every n-th generation displayed
-        self.exp = exponent #The exponent for the fitness scores
+        #Size of the population
+        self.n = pop
+        #Ceiling of mutation probability
+        self.max_mutation = max_mutaProb
+        #Population reinitialised after gen: max_gen
+        self.max_generation = max_gen
+        #Every n-th generation displayed
+        self.display_generation = display
+        #The exponent for the fitness scores
+        self.exp = exponent 
+        #Mutation spike control
+        self.max_spike = max_spike
+        self.mutaspike = int(math.floor(self.n / max_spike))
+        #Initialise the pygame Display
+        pg.init()
+        self.fnt = pg.font.SysFont("monospace", 18)
         
-        #Initialise the pyGame Display
-        pygame.init()
-        self.fnt = pygame.font.SysFont("monospace", 18)
-        
-        self.screen = pygame.display.set_mode((800, 600))
+        self.screen = pg.display.set_mode((800, 600))
         self.screen.fill(self.WHITE)
-        pygame.display.set_caption("ChessBoard - 8Queens")
+        pg.display.set_caption("ChessBoard - 8Queens")
 
         #Initialise the initial values
-        self.done = False #Variable to see if we found the solution
-        self.start = False #Variable to start/stop the evolutions
-        self.center_fill() #Fill in the posible x and y coordinates 
-        self.init_pop() #Create the first generation
-        self.scores = self.calc_scores() #Calculate the initial scores
+        #Variable to see if we found the solution
+        self.done = False
+        #Variable to start/stop the evolutions
+        self.start = False
+        #Fill in the posible x and y coordinates 
+        self.center_fill()
+        #Create the first generation
+        self.init_pop()
+        #Calculate the initial scores
+        self.scores = self.calc_scores() 
 
         #Static Labels
         self.static_labels()
@@ -78,19 +100,19 @@ class queens(object):
 
         while self.engine == True:
             #Event handling
-            for event in pygame.event.get():
+            for event in pg.event.get():
                 #Event - Quit - Window close button
-                if event.type == pygame.QUIT:
-                    pygame.quit()
+                if event.type == pg.QUIT:
+                    pg.quit()
                 
                 #Event - Quit - Button q
-                if event.type == pygame.KEYUP:
-                    if (event.key == pygame.K_q):
-                        pygame.quit()
+                if event.type == pg.KEYUP:
+                    if (event.key == pg.K_q):
+                        pg.quit()
 
                 #Event - Start - Button s
-                if event.type == pygame.KEYUP:
-                    if (event.key == pygame.K_s):
+                if event.type == pg.KEYUP:
+                    if (event.key == pg.K_s):
                         if self.start == False:
                             self.start = True
                             
@@ -101,8 +123,8 @@ class queens(object):
                             self.starttime = time.time()
 
                 #Event - Reset - Button r
-                if event.type == pygame.KEYUP:
-                    if (event.key == pygame.K_r):
+                if event.type == pg.KEYUP:
+                    if (event.key == pg.K_r):
                         #Reset/clear variable
                         self.start = False
                         self.done = False
@@ -122,7 +144,7 @@ class queens(object):
                         self.labels()
                         self.status_label("Stopped")
                         
-                        pygame.draw.rect(self.screen, self.WHITE, [460, 420, 340, 20])
+                        pg.draw.rect(self.screen, self.WHITE, [460, 420, 340, 20])
                         
             #The actual evolutions         
             if self.done == False and self.start == True:
@@ -154,7 +176,7 @@ class queens(object):
                     self.status_label("Done")
                     
                     #Display timer
-                    l_timer = self.fnt.render("Runtime: %.2f minutes " % (duration/60), 
+                    l_timer = self.fnt.render("Runtime: %.2f minutes " % (duration / 60), 
                                                True, 
                                                (self.BLACK))
                     self.screen.blit(l_timer, (460, 420))
@@ -162,7 +184,7 @@ class queens(object):
                 #Update labels
                 self.labels()
 
-            pygame.display.update()                   
+            pg.display.update()                   
                 
     #Draw the board
     def board(self):
@@ -176,13 +198,13 @@ class queens(object):
             
             for y in range(1, self.boardLength+1):
                 if cnt % 2 == 0:
-                    pygame.draw.rect(self.screen, 
+                    pg.draw.rect(self.screen, 
                                      self.LIGHT, 
                                      [self.size*x, self.size*y, 
                                       self.size, self.size]
                                      )
                 else:
-                    pygame.draw.rect(self.screen, 
+                    pg.draw.rect(self.screen, 
                                      self.BROWN, 
                                      [self.size*x, self.size*y, 
                                       self.size, self.size]
@@ -190,7 +212,7 @@ class queens(object):
                 cnt += 1
  
         #Draw the Border
-        pygame.draw.rect(self.screen, 
+        pg.draw.rect(self.screen, 
                          self.BLACK, 
                          [self.size, 
                           self.size, 
@@ -226,9 +248,11 @@ class queens(object):
     #Calculate Scores    
     def calc_scores(self):
         self.scores = []
-
-        new_scores = [] #Temporary array for the new scores
-        self.paragon_is = [0, 0] #Reset the paragon index and score to 0
+        
+        #Temporary array for the new scores
+        new_scores = [] 
+        #Reset the paragon index and score to 0
+        self.paragon_is = [0, 0] 
         count_27 = 0
         
         #Calculate the scores for each speciment, 
@@ -285,13 +309,15 @@ class queens(object):
         
     #Procreation
     def crossover(self):
-        self.generation += 1 #Increase the generation number
-             
-        new_generation = [] #List for the new generation
+        #Increase the generation number
+        self.generation += 1 
+        #List for the new generation   
+        new_generation = [] 
         
         #Create new generation based on 2 parents
         for speciment in range(self.n):
-            contenders = [] #List for the contenders for fairness
+            #List for the contenders for fairness
+            contenders = [] 
             
             #Keep selecting viable parents until there are at least 2
             while len(contenders) < 2:
@@ -305,7 +331,8 @@ class queens(object):
             #Create a mask from the parents for the pieces (queens)
             mask = np.random.choice(parents, size = 8)
             
-            children = [[],[]] #Empty array for children
+            #Empty array for children
+            children = [[], []] 
             
             #Mutate the piece/procreate from parents based on mutation probability
             for piece in range(8):
@@ -336,13 +363,15 @@ class queens(object):
             
         #Increase mutation rate, in case of being stuck at local optimum
         if self.prob_27 > 0.05:
-            self.mutation = self.prob_27 * (self.generation / (self.restart * 200))
-            if self.mutation < self.max_mutation:
-                self.mutation = 0.5
-                
+            if self.mutaspike >= self.n:
+                self.mutaspike = int(math.floor(self.n / self.max_spike))
+            else:
+                self.mutaspike += int(math.floor(self.n / self.max_spike))
+            self.mutation = self.prob_27 * (self.n / self.mutaspike)
+
     #Status label
     def status_label(self, status):
-        pygame.draw.rect(self.screen, self.WHITE, [460, 400, 340, 20])
+        pg.draw.rect(self.screen, self.WHITE, [460, 400, 340, 20])
         l_status = self.fnt.render("Current status: %s" % (status), 
                                    True, 
                                    (self.BLACK))
@@ -350,25 +379,25 @@ class queens(object):
     
     #Update labels
     def labels(self):
-        pygame.draw.rect(self.screen, self.WHITE, [460, 280, 340, 20])
+        pg.draw.rect(self.screen, self.WHITE, [460, 280, 340, 20])
         l_curgen = self.fnt.render("Current generation: %d" % (self.generation), 
                                    True, 
                                    (self.BLACK))
         self.screen.blit(l_curgen, (460, 280))
 
-        pygame.draw.rect(self.screen, self.WHITE, [460, 300, 340, 20])
+        pg.draw.rect(self.screen, self.WHITE, [460, 300, 340, 20])
         l_curmuta = self.fnt.render("Current mutation rate: %.1f%%" % (self.mutation * 100), 
                                     True, 
                                     (self.BLACK))
         self.screen.blit(l_curmuta, (460, 300))
 
-        pygame.draw.rect(self.screen, self.WHITE, [460, 320, 340, 20])
+        pg.draw.rect(self.screen, self.WHITE, [460, 320, 340, 20])
         l_retries = self.fnt.render("Number of rounds: %d" % (self.restart), 
                                     True, 
                                     (self.BLACK))
         self.screen.blit(l_retries, (460, 320))
 
-        pygame.draw.rect(self.screen, self.WHITE, [460, 340, 340, 20])
+        pg.draw.rect(self.screen, self.WHITE, [460, 340, 340, 20])
         l_fitscore = self.fnt.render("Current best score: %d" % (self.paragon_is[1]), 
                                      True, 
                                      (self.BLACK))
@@ -435,6 +464,7 @@ class queens(object):
 if __name__ == "__main__":
     game = queens(pop = 300, 
                   max_mutaProb = 0.1,
+                  max_spike = 10,
                   exponent = 4,
                   max_gen = 1000,
                   display = 1
