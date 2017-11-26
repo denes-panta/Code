@@ -149,7 +149,7 @@ class queens(object):
             #The actual evolutions         
             if self.done == False and self.start == True:
 
-                #Create new population and calculate fittness scores and muta-rate
+                #Create new population and calculate fitness scores and muta-rate
                 self.mutation_rate()
                 self.population = self.crossover()
                 self.scores = self.calc_scores()
@@ -224,7 +224,7 @@ class queens(object):
         for x in range(1, self.boardLength+1):
             self.centers.append(x*self.size)
 
-    #Create the first population and calculate the fittness scores
+    #Create the first population and calculate the fitness scores
     def init_pop(self):     
         self.population = []
 
@@ -368,6 +368,8 @@ class queens(object):
             else:
                 self.mutaspike += int(math.floor(self.n / self.max_spike))
             self.mutation = self.prob_27 * (self.n / self.mutaspike)
+            if self.mutation > 1:
+                self.mutation = 1
 
     #Status label
     def status_label(self, status):
@@ -445,15 +447,20 @@ class queens(object):
                                     (self.BLACK))
         self.screen.blit(l_mutalim, (460, 120))
         
-        l_exp = self.fnt.render("Fittness score exponent: %d" % (self.exp), 
+        l_exp = self.fnt.render("Fitness score exponent: %d" % (self.exp), 
                                    True, 
                                    (self.BLACK))
         self.screen.blit(l_exp, (460, 140))
         
+        l_spike = self.fnt.render("Mutation spike: %d" % (self.max_spike), 
+                                   True, 
+                                   (self.BLACK))
+        self.screen.blit(l_spike, (460, 160))
+        
         l_mutalim = self.fnt.render("Display every %d generations" % (self.display_generation), 
                                     True, 
                                     (self.BLACK))
-        self.screen.blit(l_mutalim, (460, 160))
+        self.screen.blit(l_mutalim, (460, 180))
 
         l_evol = self.fnt.render("Evolutionary variables", 
                                  True, 
