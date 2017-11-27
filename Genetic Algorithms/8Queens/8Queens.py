@@ -35,7 +35,6 @@ class queens(object):
     #Proportions of near solutions
     prob_27 = 0.0 
 
-    
     #The total possible values calculated for reference
     bruteforce = int(math.factorial(64) / (math.factorial(8) * math.factorial(56)))
     
@@ -45,7 +44,8 @@ class queens(object):
     
     #np.random.seed(117)
     
-    def __init__(self, pop, max_mutaProb, max_spike, exponent, max_gen, display):
+    def __init__(self, pop, max_mutaProb, max_spike, 
+                 spike_limit, exponent, max_gen, display):
         #Input variables
         #Size of the population
         self.n = pop
@@ -60,10 +60,10 @@ class queens(object):
         #Mutation spike control
         self.max_spike = max_spike
         self.mutaspike = int(math.floor(self.n / max_spike))
+        self.mutaspike_limit = spike_limit
         #Initialise the pygame Display
         pg.init()
         self.fnt = pg.font.SysFont("monospace", 18)
-        
         self.screen = pg.display.set_mode((800, 600))
         self.screen.fill(self.WHITE)
         pg.display.set_caption("ChessBoard - 8Queens")
@@ -253,6 +253,7 @@ class queens(object):
         new_scores = [] 
         #Reset the paragon index and score to 0
         self.paragon_is = [0, 0] 
+	#Count the number of near solutions
         count_27 = 0
         
         #Calculate the scores for each speciment, 
@@ -368,8 +369,8 @@ class queens(object):
             else:
                 self.mutaspike += int(math.floor(self.n / self.max_spike))
             self.mutation = self.prob_27 * (self.n / self.mutaspike)
-            if self.mutation > 1:
-                self.mutation = 1
+            if self.mutation > self.mutaspike_limit:
+                self.mutation = self.mutaspike_limit
 
     #Status label
     def status_label(self, status):
@@ -456,11 +457,16 @@ class queens(object):
                                    True, 
                                    (self.BLACK))
         self.screen.blit(l_spike, (460, 160))
+
+        l_spk_lmt = self.fnt.render("Spike limit: %.1f%%" % (self.mutaspike_limit * 100), 
+                                   True, 
+                                   (self.BLACK))
+        self.screen.blit(l_spk_lmt, (460, 180))
         
         l_mutalim = self.fnt.render("Display every %d generations" % (self.display_generation), 
                                     True, 
                                     (self.BLACK))
-        self.screen.blit(l_mutalim, (460, 180))
+        self.screen.blit(l_mutalim, (460, 200))
 
         l_evol = self.fnt.render("Evolutionary variables", 
                                  True, 
@@ -472,6 +478,7 @@ if __name__ == "__main__":
     game = queens(pop = 300, 
                   max_mutaProb = 0.1,
                   max_spike = 10,
+                  spike_limit = 0.65,
                   exponent = 4,
                   max_gen = 1000,
                   display = 1
