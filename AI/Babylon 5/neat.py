@@ -11,7 +11,7 @@ class neat(object):
     #Define the color constants
     BG = (255, 255, 255)
     
-    def __init__(self):
+    def __init__(self, pop_size):
         #Initialise the control variables
         self.running = True
         self.start = True
@@ -19,10 +19,9 @@ class neat(object):
         #Timer
         self.ticks = time.time()
         
-        #Initialize the state variables
-        self.generation = 0
-        self.mutation = 0.01
-
+        #Runtime limit in seconds
+        self.limit = 20
+        
         #Background
         self.space = self.bg()
 
@@ -68,11 +67,32 @@ class neat(object):
         
         #Get the screen edge coordinates
         self.get_constants()
+        self.collect_data(self.f1, self.f2)
+        self.collect_data(self.f2, self.f2)
+        
+        #Initialize the Neat variables
+        self.generation = 0
+        self.genome = 0
+        self.n = pop_size
+        
+        #Create populations of NNs for both fighters
+        self.f1_pop = self.pop_init(self.f1.memory)
+        self.f2_pop = self.pop_init(self.f2.memory)
         
         #Run the engine
         self.engine()
         
     ### Neat functions ###
+    #Initiate the population
+    def pop_init(self, fighter_data):
+        #Population
+        population = []
+        
+        for speciment in range(self.n):
+            population.append(nn.neuralnet(fighter_data))
+ 
+        return(population)
+    
     #Reset the game variables to default
     def reset(self):
         #Delete the fighter instances
@@ -93,8 +113,7 @@ class neat(object):
                           "starfury2.png",
                           "right"
                           )      
-        print(self.f1.id)
-        print(self.f2.id)
+
         #Clear shots
         for ind, obj in enumerate(self.shots):
             self.shots.pop(ind).__del__
@@ -110,7 +129,8 @@ class neat(object):
         #fill up so that there are 5 number of shots data points
         #using the opponent's position and the screen size accross
         while len(own.incoming) < 5:
-            own.incoming.append([self.sc_a, opp.x, opp.y])
+            #self.sc_a to make sure that the fired shots are on top of the list
+            own.incoming.append([self.sc_a, opp.x, opp.y, 0, 0])
         
         #Sort the projectiles by distance to target
         sorted(own.incoming, key = itemgetter(0))
@@ -119,6 +139,8 @@ class neat(object):
         for ind, lst in enumerate(own.incoming):
             own.memory.append(lst[1])
             own.memory.append(lst[2])
+            own.memory.append(lst[3])
+            own.memory.append(lst[4])
         
     #Get the screen edge coordinates
     def get_constants(self):
@@ -146,9 +168,13 @@ class neat(object):
         while self.running == True:            
             #Once 20 seconds have passed, reset to beginning
             #and load the next neural network
-            if time.time() - self.ticks >= 5:
+            if time.time() - self.ticks >= self.limit:
                 self.reset()
                 self.ticks = time.time()
+                if self.genome == (self.n - 1):
+                    self.genome = 0
+                else:
+                    self.genome += 1
 
             #Event handling
             for event in pg.event.get():
@@ -203,8 +229,13 @@ class neat(object):
             #Move the objects and do the calculations            
             if self.start == True:
                 self.iterate()
-
+            
+            #Update the screen
             pg.display.update()    
+
+            #Update the input data in the neural network
+            self.f1_pop[self.genome].data = self.f1.memory
+            self.f2_pop[self.genome].data = self.f2.memory
 
     ### Game functions ###
     #Background
@@ -212,11 +243,17 @@ class neat(object):
         background = pg.image.load("F:/Code/AI/images/bg.jpg")
         return(background)    
 
+    #Edge correction
     def edge_check(self, fighter):
+        #edge variable to see if edge correction was implemented
         edge = False
-        
+
+        #Left side        
+        #Calculate the offsets
         off_x = int(fighter.x) - 0
         off_y = int(fighter.y) - 0
+
+        #Check ot see if the fighter is offscreen
         if self.vertical.overlap(fighter.mask, (off_x, off_y)) != None:
             while self.vertical.overlap(fighter.mask, (off_x, off_y)) != None: 
                 fighter.x += 1
@@ -227,9 +264,13 @@ class neat(object):
             fighter.vel_x = -fighter.vel_x / 2
             fighter.damage += 1
             edge = True
-            
+
+        #Right side        
+        #Calculate the offsets            
         off_x = int(fighter.x) - self.sc_w
         off_y = int(fighter.y) - 0
+
+        #Check ot see if the fighter is offscreen
         if self.vertical.overlap(fighter.mask, (off_x, off_y)) != None:
             while self.vertical.overlap(fighter.mask, (off_x, off_y)) != None: 
                 fighter.x -= 1
@@ -238,12 +279,15 @@ class neat(object):
                 off_x = int(fighter.x) - self.sc_w
                 off_y = int(fighter.y) - 0
             fighter.vel_x = -fighter.vel_x / 2
-            self.move(fighter)
             fighter.damage += 1
             edge = True
-            
+
+        #Top side        
+        #Calculate the offsets            
         off_x = int(fighter.x) - 0
         off_y = int(fighter.y) - 0
+ 
+        #Check ot see if the fighter is offscreen        
         if self.horizontal.overlap(fighter.mask, (off_x, off_y)) != None:
             while self.horizontal.overlap(fighter.mask, (off_x, off_y)) != None: 
                 fighter.y += 1
@@ -252,12 +296,15 @@ class neat(object):
                 off_x = int(fighter.x) - 0
                 off_y = int(fighter.y) - 0
             fighter.vel_y = -fighter.vel_y / 2
-            self.move(fighter)
             fighter.damage += 1
             edge = True
-            
+
+        #Bottom side        
+        #Calculate the offsets            
         off_x = int(fighter.x) - 0
         off_y = int(fighter.y) - self.sc_h
+
+        #Check ot see if the fighter is offscreen
         if self.horizontal.overlap(fighter.mask, (off_x, off_y)) != None:
             while self.horizontal.overlap(fighter.mask, (off_x, off_y)) != None: 
                 fighter.y -= 1
@@ -266,10 +313,9 @@ class neat(object):
                 off_x = int(fighter.x) - 0
                 off_y = int(fighter.y) - self.sc_h 
             fighter.vel_y = -fighter.vel_y / 2
-            self.move(fighter)
             fighter.damage += 1
             edge = True
-        
+
         if edge == True:
             fighter.ship_center = [fighter.x + fighter.r_center[0], 
                                    fighter.y + fighter.r_center[1]]
@@ -377,13 +423,13 @@ class neat(object):
             for ind, obj in enumerate(self.shots):
                 #Move the projectiles and calculate the distance to target
                 if obj.id == 0:
-                    obj.pos_x += obj.velocity_x
-                    obj.pos_y += obj.velocity_y
+                    obj.pos_x += obj.vel_x
+                    obj.pos_y += obj.vel_y
                     obj.dtt_x = abs(self.f2.x - obj.pos_x)
                     obj.dtt_y = abs(self.f2.y - obj.pos_y)                    
                 elif obj.id == 1:
-                    obj.pos_x -= obj.velocity_x
-                    obj.pos_y -= obj.velocity_y
+                    obj.pos_x -= obj.vel_x
+                    obj.pos_y -= obj.vel_y
                     obj.dtt_x = abs(self.f1.x - obj.pos_x)
                     obj.dtt_y = abs(self.f1.y - obj.pos_y)
                 obj.dtt = math.sqrt(obj.dtt_x**2 + obj.dtt_y**2)                
@@ -403,11 +449,20 @@ class neat(object):
                 obj.pos_y <= 0 or \
                 obj.pos_y >= self.sc_h:
                     self.shots.pop(ind).__del__
+                #Else, append the data to the fighters
                 else:
                     if obj.id == 0:
-                        self.f2.incoming.append([obj.dtt, obj.pos_x, obj.pos_y])
+                        self.f2.incoming.append([obj.dtt, 
+                                                 obj.pos_x, 
+                                                 obj.pos_y,
+                                                 obj.vel_x,
+                                                 obj.vel_y])
                     elif obj.id == 1:
-                        self.f1.incoming.append([obj.dtt, obj.pos_x, obj.pos_y])
+                        self.f1.incoming.append([obj.dtt, 
+                                                 obj.pos_x, 
+                                                 obj.pos_y,
+                                                 obj.vel_x,
+                                                 obj.vel_y])
 
 if __name__ == "__main__":
-    fight = neat()
+    fight = neat(100)

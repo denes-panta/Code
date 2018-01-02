@@ -18,11 +18,11 @@ class shot(object):
         
         #Velocity of the shot
         if self.id == 0:
-            self.velocity_x = 20 * math.cos(-angle * math.pi) + vel_x
-            self.velocity_y = 20 * math.sin(-angle * math.pi) + vel_y
+            self.vel_x = 25 * math.cos(-angle * math.pi) + vel_x
+            self.vel_y = 25 * math.sin(-angle * math.pi) + vel_y
         elif self.id == 1:
-            self.velocity_x = 20 * math.cos(-angle * math.pi) - vel_x
-            self.velocity_y = 20 * math.sin(-angle * math.pi) - vel_y
+            self.vel_x = 25 * math.cos(-angle * math.pi) - vel_x
+            self.vel_y = 25 * math.sin(-angle * math.pi) - vel_y
         
         #Position of the shot
         self.pos_x = position[0]

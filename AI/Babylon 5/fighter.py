@@ -26,7 +26,7 @@ class sa23e(object):
         #Thrust & turn engine power
         self.thrust = 2
         self.turn = 0.125
-        self.max_speed = 8
+        self.max_speed = 10
         
         #Initial angle of the spacecraft
         self.angle = 0
@@ -66,6 +66,7 @@ class sa23e(object):
         
         #Data
         self.behav = []
+        self.get_data()
         self.incoming = []
         self.memory = []
  
@@ -77,7 +78,7 @@ class sa23e(object):
         
     #Create the positional variables
     def get_data(self):
-        self.behav = []
+        self.behav.clear()
         self.behav.append(self.angle)
         self.behav.append(self.ship_center[0])
         self.behav.append(self.ship_center[1])
