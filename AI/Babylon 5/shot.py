@@ -29,9 +29,9 @@ class shot(object):
         self.pos_y = position[1]
         
         #Distance to target
-        self.dtt_x = None
-        self.dtt_y = None
-        self.dtt = None
+        self.dtt_x = 0
+        self.dtt_y = 0
+        self.dtt = 0
         
     def __del__(self):
         pass

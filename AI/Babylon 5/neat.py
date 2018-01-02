@@ -15,8 +15,10 @@ class neat(object):
         #Initialise the control variables
         self.running = True
         self.start = True
-        self.done = False
-
+        
+        #Timer
+        self.ticks = time.time()
+        
         #Initialize the state variables
         self.generation = 0
         self.mutation = 0.01
@@ -66,27 +68,57 @@ class neat(object):
         
         #Get the screen edge coordinates
         self.get_constants()
-    
+        
+        #Run the engine
+        self.engine()
+        
     ### Neat functions ###
-    
-    def get_projectiles(self):
-        pass
-    
+    #Reset the game variables to default
+    def reset(self):
+        #Delete the fighter instances
+        self.f1.__del__()
+        self.f2.__del__()
+        
+        #Reset counter of the sa23e object
+        f.sa23e.counter_null(self)
+        
+        #Create the new instances for the fighters
+        self.f1 = f.sa23e(100, 
+                          int(self.sc_h / 2),
+                          "starfury1.png",
+                          "left"
+                          )
+        self.f2 = f.sa23e(1700, 
+                          int(self.sc_h / 2),
+                          "starfury2.png",
+                          "right"
+                          )      
+        print(self.f1.id)
+        print(self.f2.id)
+        #Clear shots
+        for ind, obj in enumerate(self.shots):
+            self.shots.pop(ind).__del__
+        self.shots.clear()
+            
     #Collect the input data for each ship
     def collect_data(self, own, opp):
         own.memory = []
         own.memory += own.behav
         own.memory += opp.behav
         own.memory += self.env
+        
         #fill up so that there are 5 number of shots data points
         #using the opponent's position and the screen size accross
         while len(own.incoming) < 5:
             own.incoming.append([self.sc_a, opp.x, opp.y])
+        
+        #Sort the projectiles by distance to target
         sorted(own.incoming, key = itemgetter(0))
+        
+        #Get the x,y coordinates of the 5 closest shots        
         for ind, lst in enumerate(own.incoming):
             own.memory.append(lst[1])
             own.memory.append(lst[2])
-        print(own.memory)
         
     #Get the screen edge coordinates
     def get_constants(self):
@@ -111,7 +143,13 @@ class neat(object):
     ### Engine ###
     #Engine
     def engine(self):
-        while self.running == True:
+        while self.running == True:            
+            #Once 20 seconds have passed, reset to beginning
+            #and load the next neural network
+            if time.time() - self.ticks >= 5:
+                self.reset()
+                self.ticks = time.time()
+
             #Event handling
             for event in pg.event.get():
                 #Shell events
@@ -160,10 +198,12 @@ class neat(object):
                 #Events - Shoot
                 if event.type == pg.KEYDOWN:
                     if (event.key == pg. K_SPACE):
+                        self.shoot(self.f1)
                         self.shoot(self.f2)
-                        
-            if self.done == False and self.start == True:
+            #Move the objects and do the calculations            
+            if self.start == True:
                 self.iterate()
+
             pg.display.update()    
 
     ### Game functions ###
@@ -236,6 +276,7 @@ class neat(object):
             fighter.g_port()
             fighter.col_mask()
     
+    #Calculate the new positions
     def iterate(self):
         #Clear screen with wallpaper
         self.screen.blit(self.space, (0, 0))        
@@ -331,7 +372,7 @@ class neat(object):
     def move_projectiles(self):
         self.f1.incoming.clear()
         self.f2.incoming.clear()
-
+        
         if self.shots:
             for ind, obj in enumerate(self.shots):
                 #Move the projectiles and calculate the distance to target
@@ -352,6 +393,7 @@ class neat(object):
                                  (obj.pos_x - obj.s_center[0], 
                                   obj.pos_y - obj.s_center[0])
                                  )
+                #Check for hits
                 self.impact_detect(self.f1, obj, ind)
                 self.impact_detect(self.f2, obj, ind)
                 

@@ -1,14 +1,16 @@
-from itertools import count
 import math
 import pygame as pg
 
 class sa23e(object):
-    _ids = count(0)
+    _ids = 0
     
     def __init__(self, pos_x, pos_y, img_name, side):
-        
         #ID    
-        self.id = next(self._ids)
+        self.id = sa23e._ids
+        sa23e._ids += 1
+        
+        #Round
+        self.round = 0
         
         #Number of controls
         self.n_ctrl = 8
@@ -44,11 +46,13 @@ class sa23e(object):
         
         #Coordinates of the gun port
         if side == "left":
-            self.gun = [60, 15]
+            self.gun = [50, 15]
         elif side == "right":
             self.gun = [-80, 15]
+            
         self.ship_center = [self.x + self.r_center[0], 
                             self.y + self.r_center[1]]
+        
         self.gun_port = [0, 0]
         self.g_port()
         
@@ -64,6 +68,12 @@ class sa23e(object):
         self.behav = []
         self.incoming = []
         self.memory = []
+ 
+    def __del__(self):
+        pass
+    
+    def counter_null(self):
+        sa23e._ids = 0
         
     #Create the positional variables
     def get_data(self):
