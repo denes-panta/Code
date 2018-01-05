@@ -4,10 +4,9 @@ from operator import itemgetter
 import fighter as f
 import shot as sh
 import neuralnet as nn
-import parts as p
 import time
 
-class neat(object):
+class Neat(object):
     #Define the color constants
     BG = (255, 255, 255)
     
@@ -16,15 +15,13 @@ class neat(object):
         self.running = True
         self.start = True
         
-        #Timer
-        self.ticks = time.time()
-        
-        #Runtime limit in seconds
-        self.limit = 20
+        #Ticks
+        self.ticks = 0
         
         #Background
         self.space = self.bg()
-
+        self.shot = self.shot()
+        
         #Initialise the pygame Display
         pg.init()
         
@@ -47,12 +44,12 @@ class neat(object):
         self.horizontal.fill()
         
         #Create the fighters and fighter variables
-        self.f1 = f.sa23e(100, 
+        self.f1 = f.Sa23e(100, 
                           int(self.sc_h / 2),
                           "starfury1.png",
                           "left"
                           )    
-        self.f2 = f.sa23e(1700, 
+        self.f2 = f.Sa23e(1700, 
                           int(self.sc_h / 2),
                           "starfury2.png",
                           "right"
@@ -71,26 +68,53 @@ class neat(object):
         self.collect_data(self.f2, self.f2)
         
         #Initialize the Neat variables
+        #Number of Inputs and Outputs
+        self.i = len(self.f1.memory)
+        self.o = 8
+        
+        #Innovation ID counter
+        self.f1_innNum = 0
+        self.f2_innNum = 0
+
+        #Innovation Dictonary
+        self.f1_innDict = dict()
+        self.f2_innDict = dict()
+        
         self.generation = 0
         self.genome = 0
         self.n = pop_size
         
         #Create populations of NNs for both fighters
-        self.f1_pop = self.pop_init(self.f1.memory)
-        self.f2_pop = self.pop_init(self.f2.memory)
+        self.f1_pop = self.pop_init(self.i,
+                                    self.o,
+                                    self.f1_innDict, 
+                                    self.f1_innNum
+                                    )
+        self.f2_pop = self.pop_init(self.i,
+                                    self.o, 
+                                    self.f1_innDict, 
+                                    self.f1_innNum
+                                    )
         
         #Run the engine
         self.engine()
         
     ### Neat functions ###
     #Initiate the population
-    def pop_init(self, fighter_data):
+    def pop_init(self, i, o, innDict, innNum):
         #Population
         population = []
         
-        for speciment in range(self.n):
-            population.append(nn.neuralnet(fighter_data))
- 
+        #Create the initial population
+        for genome in range(self.n):
+            
+            #Create the Brain for the genome
+            population.append(nn.Neuralnet(i, o, innDict, innNum))
+            
+            #Get the updated Innovation Number and Innovation Dictionary
+            innDict = population[genome].get_innDict()
+            innNum = population[genome].get_innNum()
+            
         return(population)
     
     #Reset the game variables to default
@@ -100,15 +124,15 @@ class neat(object):
         self.f2.__del__()
         
         #Reset counter of the sa23e object
-        f.sa23e.counter_null(self)
+        f.Sa23e.counter_null(self)
         
         #Create the new instances for the fighters
-        self.f1 = f.sa23e(100, 
+        self.f1 = f.Sa23e(100, 
                           int(self.sc_h / 2),
                           "starfury1.png",
                           "left"
                           )
-        self.f2 = f.sa23e(1700, 
+        self.f2 = f.Sa23e(1700, 
                           int(self.sc_h / 2),
                           "starfury2.png",
                           "right"
@@ -130,7 +154,12 @@ class neat(object):
         #using the opponent's position and the screen size accross
         while len(own.incoming) < 5:
             #self.sc_a to make sure that the fired shots are on top of the list
-            own.incoming.append([self.sc_a, opp.x, opp.y, 0, 0])
+            own.incoming.append([self.sc_a, 
+                                 opp.gun_port[0], 
+                                 opp.gun_port[1], 
+                                 0, 
+                                 0]
+                                )
         
         #Sort the projectiles by distance to target
         sorted(own.incoming, key = itemgetter(0))
@@ -152,7 +181,6 @@ class neat(object):
 
     #The conversion table for the fighters
     def conversion(self, fighter, y):
-        if y == 0: None
         if y == 1: fighter.vel_forward()
         if y == 2: fighter.vel_backward()
         if y == 3: fighter.vel_down()
@@ -168,14 +196,16 @@ class neat(object):
         while self.running == True:            
             #Once 20 seconds have passed, reset to beginning
             #and load the next neural network
-            if time.time() - self.ticks >= self.limit:
+            if self.ticks == 50:
                 self.reset()
-                self.ticks = time.time()
+                self.ticks = 0
                 if self.genome == (self.n - 1):
                     self.genome = 0
                 else:
                     self.genome += 1
-
+            else:
+                self.ticks += 1
+                
             #Event handling
             for event in pg.event.get():
                 #Shell events
@@ -187,60 +217,45 @@ class neat(object):
                 if event.type == pg.KEYUP:
                     if (event.key == pg.K_ESCAPE):
                         pg.quit()
-                        
-                #Events - Movement Controls
-                #Forward
-                if event.type == pg.KEYDOWN:
-                    if (event.key == pg.K_d):
-                        self.conversion(self.f2, 1)
-                #Port
-                if event.type == pg.KEYDOWN:
-                    if (event.key == pg.K_w):
-                         self.f2.vel_up()
-                #Backward
-                if event.type == pg.KEYDOWN:
-                    if (event.key == pg.K_a):
-                        self.f2.vel_backward()
-                #Starboard
-                if event.type == pg.KEYDOWN:
-                    if (event.key == pg.K_s):
-                        self.f2.vel_down()
                 
-                #Events - Stopping
-                if event.type == pg.KEYDOWN:
-                    if (event.key == pg.K_c):
-                        self.f2.stand()
+            #Update behaviour of fighters
+            self.f1.get_data()
+            self.f2.get_data()
+            self.collect_data(self.f1, self.f2)
+            self.collect_data(self.f2, self.f1)
 
-                #Events - Turn Controls
-                #Port
-                if event.type == pg.KEYDOWN:
-                    if (event.key == pg.K_q):
-                        self.f2.turn_l()
-                #Starboard
-                if event.type == pg.KEYDOWN:
-                    if (event.key == pg.K_e):
-                        self.f2.turn_r()
-                        
-                #Events - Shoot
-                if event.type == pg.KEYDOWN:
-                    if (event.key == pg. K_SPACE):
-                        self.shoot(self.f1)
-                        self.shoot(self.f2)
-            #Move the objects and do the calculations            
-            if self.start == True:
-                self.iterate()
-            
-            #Update the screen
-            pg.display.update()    
+            #Update the neural network with the new data
+            self.f1.commands = \
+            self.f1_pop[self.genome].update(self.f1.memory, "active")
+            self.f2.commands = \
+            self.f2_pop[self.genome].update(self.f2.memory, "active")
 
-            #Update the input data in the neural network
-            self.f1_pop[self.genome].data = self.f1.memory
-            self.f2_pop[self.genome].data = self.f2.memory
+            for cnd in range(0, self.o):
+                self.conversion(self.f1, self.f1.commands[cnd] * (cnd + 1))
+                self.conversion(self.f2, self.f2.commands[cnd] * (cnd + 1))
+                #Move the objects and do the calculations            
+                if self.start == True:
+                    self.iterate()
+        
+                #Update the screen
+                pg.display.update()
 
     ### Game functions ###
     #Background
+    def shot(self):
+        #Import background image
+        shot = pg.image.load("F:/Code/AI/images/shot.png")
+        shot = pg.transform.smoothscale(shot, 
+                                        (int(shot.get_width() * 0.21), 
+                                         int(shot.get_height() * 0.21))
+                                        )
+                                        
+        return(shot)
+
     def bg(self):
+        #Import background image
         background = pg.image.load("F:/Code/AI/images/bg.jpg")
+        
         return(background)    
 
     #Edge correction
@@ -315,7 +330,8 @@ class neat(object):
             fighter.vel_y = -fighter.vel_y / 2
             fighter.damage += 1
             edge = True
-
+        
+        #if an adjustment has been made, recalculate the gun port and the mask
         if edge == True:
             fighter.ship_center = [fighter.x + fighter.r_center[0], 
                                    fighter.y + fighter.r_center[1]]
@@ -345,16 +361,11 @@ class neat(object):
         self.display_ship(self.f1)
         self.display_ship(self.f2)
         
-        #Update behaviour of fighters
-        self.f1.get_data()
-        self.f2.get_data()
-        self.collect_data(self.f1, self.f2)
-        self.collect_data(self.f2, self.f1)
-        
     #Shoot
     def shoot(self, fighter):
         if time.time() - fighter.gun_cdown > fighter.cdown_rate: 
-            self.shots.append(sh.shot(fighter.angle, 
+            self.shots.append(sh.Shot(self.shot,
+                                      fighter.angle, 
                                       fighter.gun_port, 
                                       fighter.vel_x,
                                       fighter.vel_y,
@@ -388,6 +399,7 @@ class neat(object):
         
         #Collision check
         if st.mask.overlap(fighter.mask, (off_x, off_y)) != None:
+            
             #Delete the shot and add damage
             self.shots.pop(i).__del__
             fighter.damage += 1
@@ -399,8 +411,9 @@ class neat(object):
         off_y = int(fighter_1.y) - int(fighter_2.y)
         
         #Collision check
-        if fighter_2.mask.overlap(fighter_1.mask, (off_x, off_y)) != None:        
-            #Reverse and halv the speed
+        if fighter_2.mask.overlap(fighter_1.mask, (off_x, off_y)) != None:     
+            
+            #Reverse and halv the speeds
             fighter_1.vel_x = -fighter_1.vel_x / 2 
             fighter_1.vel_y = -fighter_1.vel_y / 2
             fighter_2.vel_x = -fighter_2.vel_x / 2
@@ -432,13 +445,19 @@ class neat(object):
                     obj.pos_y -= obj.vel_y
                     obj.dtt_x = abs(self.f1.x - obj.pos_x)
                     obj.dtt_y = abs(self.f1.y - obj.pos_y)
-                obj.dtt = math.sqrt(obj.dtt_x**2 + obj.dtt_y**2)                
-
+                obj.p_dtt = obj.c_dtt
+                obj.c_dtt = math.sqrt(obj.dtt_x**2 + obj.dtt_y**2)
+                if obj.p_dtt >= obj.c_dtt:
+                    obj.incoming = True
+                elif obj.p_dtt < obj.c_dtt:
+                    obj.incoming = False
+                    
                 #Display the shot
-                self.screen.blit(obj.s_img, 
+                self.screen.blit(self.shot, 
                                  (obj.pos_x - obj.s_center[0], 
                                   obj.pos_y - obj.s_center[0])
                                  )
+                                 
                 #Check for hits
                 self.impact_detect(self.f1, obj, ind)
                 self.impact_detect(self.f2, obj, ind)
@@ -449,20 +468,21 @@ class neat(object):
                 obj.pos_y <= 0 or \
                 obj.pos_y >= self.sc_h:
                     self.shots.pop(ind).__del__
-                #Else, append the data to the fighters
-                else:
+                    
+                #Else, append the data to the fighter incoming table
+                elif obj.incoming == True:
                     if obj.id == 0:
-                        self.f2.incoming.append([obj.dtt, 
+                        self.f2.incoming.append([obj.c_dtt, 
                                                  obj.pos_x, 
                                                  obj.pos_y,
                                                  obj.vel_x,
                                                  obj.vel_y])
                     elif obj.id == 1:
-                        self.f1.incoming.append([obj.dtt, 
+                        self.f1.incoming.append([obj.c_dtt, 
                                                  obj.pos_x, 
                                                  obj.pos_y,
                                                  obj.vel_x,
                                                  obj.vel_y])
 
 if __name__ == "__main__":
-    fight = neat(100)
+    fight = Neat(100)

@@ -1,13 +1,13 @@
 import math
 import pygame as pg
 
-class sa23e(object):
+class Sa23e(object):
     _ids = 0
     
     def __init__(self, pos_x, pos_y, img_name, side):
         #ID    
-        self.id = sa23e._ids
-        sa23e._ids += 1
+        self.id = Sa23e._ids
+        Sa23e._ids += 1
         
         #Round
         self.round = 0
@@ -69,12 +69,15 @@ class sa23e(object):
         self.get_data()
         self.incoming = []
         self.memory = []
- 
+        
+        #Commands
+        self.commands = []
+        
     def __del__(self):
         pass
-    
+        
     def counter_null(self):
-        sa23e._ids = 0
+        Sa23e._ids = 0
         
     #Create the positional variables
     def get_data(self):

@@ -1,15 +1,15 @@
 import pygame as pg
 import math
      
-class shot(object):
-    def __init__(self, angle, position, vel_x, vel_y, name):
+class Shot(object):
+    def __init__(self, img, angle, position, vel_x, vel_y, name):
 
         #The projectile was fired from which fighter
         # 0 == player 1, 1 == player 2
         self.id = name
                     
         #Image details
-        self.s_img = self.img_load()
+        self.s_img = img
         self.s_rect = self.s_img.get_rect()
         self.s_center = self.s_rect.center
         
@@ -31,15 +31,8 @@ class shot(object):
         #Distance to target
         self.dtt_x = 0
         self.dtt_y = 0
-        self.dtt = 0
+        self.c_dtt = 0
+        self.p_dtt = 0
         
     def __del__(self):
         pass
-    
-    def img_load(self):
-        temp_img = pg.image.load("F:/Code/AI/images/shot.png")
-        temp_img = pg.transform.smoothscale(temp_img, 
-                                            (int(temp_img.get_width() * 0.21), 
-                                             int(temp_img.get_height() * 0.21))
-                                            )
-        return temp_img
