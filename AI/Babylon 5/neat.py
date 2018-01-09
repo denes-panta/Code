@@ -5,18 +5,24 @@ import fighter as f
 import shot as sh
 import neuralnet as nn
 import time
-
+import mcu
+from multiprocessing import Pool
+ 
 class Neat(object):
     #Define the color constants
-    BG = (255, 255, 255)
+    FONT = (204, 204, 204)
     
     def __init__(self, pop_size):
-        #Initialise the control variables
-        self.running = True
-        self.start = True
         
-        #Ticks
-        self.ticks = 0
+        #Call pool
+#        self.pool = Pool()
+        
+        #Initialise the control variables
+        self.running = False
+        
+        #Max epoch
+        self.epoch = 0
+        self.max_epoch = 50
         
         #Background
         self.space = self.bg()
@@ -68,6 +74,10 @@ class Neat(object):
         self.collect_data(self.f2, self.f2)
         
         #Initialize the Neat variables
+        #Stale genome
+        self.f1_stale = False
+        self.f2_stale = False
+        
         #Number of Inputs and Outputs
         self.i = len(self.f1.memory)
         self.o = 8
@@ -80,22 +90,48 @@ class Neat(object):
         self.f1_innDict = dict()
         self.f2_innDict = dict()
         
+        #Generation counter
         self.generation = 0
-        self.genome = 0
+        
+        #Genome counter
+        self.gen = 0
+        
+        #Population size
         self.n = pop_size
         
-        #Create populations of NNs for both fighters
-        self.f1_pop = self.pop_init(self.i,
-                                    self.o,
-                                    self.f1_innDict, 
-                                    self.f1_innNum
-                                    )
-        self.f2_pop = self.pop_init(self.i,
-                                    self.o, 
-                                    self.f1_innDict, 
-                                    self.f1_innNum
-                                    )
+        #Mutation/replacement probabilities/rates
+        self.mp_activation = 0.1
+        self.mr_weight = 0.2
+        self.rp_weight = 0.1
         
+        #Innovation probability
+        self.ip_node = 1
+        self.ip_link = 1
+        self.ip_rlink = 0.5
+        
+        #Crossover rate
+        self.crossover = 0.7
+        
+        #Max mutation perturbation
+        self.mm_perturb = 0.5
+        
+        #Species probabilities
+        self.th_compatibility = 0.26
+        self.th_oldage = 50
+        self.py_oldage = 0.7
+        self.th_youth = 10
+        self.bs_youth = 1.3
+        
+        #Number of offsprings
+        self.n_spawn = None
+        
+        #Create populations of NNs for both fighters
+        self.f1_pop, self.f1_innDict, self.f1_innNum = \
+        self.pop_init(self.i, self.o, self.f1_innDict, self.f1_innNum)
+
+        self.f2_pop, self.f2_innDict, self.f2_innNum = \
+        self.pop_init(self.i, self.o, self.f2_innDict, self.f2_innNum)
+
         #Run the engine
         self.engine()
         
@@ -106,16 +142,13 @@ class Neat(object):
         population = []
         
         #Create the initial population
-        for genome in range(self.n):
+        for pop in range(self.n):
             
-            #Create the Brain for the genome
-            population.append(nn.Neuralnet(i, o, innDict, innNum))
+            #Create the Brain for the gen
+            population.append(nn.Neuralnet(i, o))
+            innDict, innNum = population[pop].create_net(innDict, innNum)
             
-            #Get the updated Innovation Number and Innovation Dictionary
-            innDict = population[genome].get_innDict()
-            innNum = population[genome].get_innNum()
-            
-        return(population)
+        return(population, innDict, innNum)
     
     #Reset the game variables to default
     def reset(self):
@@ -190,21 +223,103 @@ class Neat(object):
         if y == 7: fighter.turn_r()
         if y == 8: self.shoot(fighter)
     
+    #Display scores
+    def status(self):
+        #Fitness Score for the Blus ship
+        l_bluesc = self.fnt.render("Blue fitness: %d" % (self.f1.fitness("defensive")), 
+                                   True, 
+                                   (self.FONT))
+        self.screen.blit(l_bluesc, (20, self.sc_h - 160))
+
+        #Fitness Score for the Red ship
+        l_redesc = self.fnt.render("Red fitness: %d" % (self.f2.fitness("agressive")), 
+                                   True, 
+                                   (self.FONT))
+        self.screen.blit(l_redesc, (20, self.sc_h - 140))
+
+        #Current generation 
+        l_curgen = self.fnt.render("Current generation: %d" % (self.generation + 1), 
+                                   True, 
+                                   (self.FONT))
+        self.screen.blit(l_curgen, (20, self.sc_h - 120))
+        
+        #Current genome
+        l_curgnom = self.fnt.render("Current genome: %d" % (self.gen + 1), 
+                                   True, 
+                                   (self.FONT))
+        self.screen.blit(l_curgnom,(20, self.sc_h - 100))
+    
     ### Engine ###
     #Engine
     def engine(self):
-        while self.running == True:            
-            #Once 20 seconds have passed, reset to beginning
+        self.running = True
+        while self.running == True:
+            #Once 50 iterations have passed, reset to beginning
             #and load the next neural network
-            if self.ticks == 50:
-                self.reset()
-                self.ticks = 0
-                if self.genome == (self.n - 1):
-                    self.genome = 0
+            if self.epoch == self.max_epoch or \
+            (self.f1_stale == True or self.f2_stale == True):
+                #Adjust fitness scores
+                if (self.f1_stale == True or self.f2_stale == True):
+                    self.f1_pop[self.gen].r_fitness = None
+                    self.f2_pop[self.gen].r_fitness = None                    
                 else:
-                    self.genome += 1
+                    self.f1_pop[self.gen].r_fitness = self.f1.fitness("defensive")
+                    self.f2_pop[self.gen].r_fitness = self.f2.fitness("agressive")
+                    
+                self.reset()
+                self.epoch = 0
+                self.f1_stale = False
+                self.f2_stale = False
+                
+                #Check if we reached the last genome
+                if self.gen == (self.n - 1):
+                    self.gen = 0
+                    self.generation += 1
+                else:
+                    self.gen += 1
+            
+            #If it is the iteration, evolve the genome
+            elif self.epoch == 1:
+                #Add Node to fighter 1
+                self.f1_innDict, self.f1_innNum = \
+                self.f1_pop[self.gen].add_node(self.ip_node, 
+                                               20, 
+                                               self.f1_innDict, 
+                                               self.f1_innNum
+                                               )
+                
+                #Add link to fighter 1
+                self.f1_innDict, self.f1_innNum = \
+                self.f1_pop[self.gen].add_link(self.ip_link,
+                                               self.ip_rlink, 
+                                               20, 
+                                               10, 
+                                               self.f1_innDict,
+                                               self.f1_innNum
+                                               )
+                
+                #Add Node to fighter 2
+                self.f2_innDict, self.f2_innNum = \
+                self.f2_pop[self.gen].add_node(self.ip_node, 
+                                               20, 
+                                               self.f2_innDict, 
+                                               self.f2_innNum
+                                               )
+                
+                #Add link to fighter 2
+                self.f2_innDict, self.f2_innNum = \
+                self.f2_pop[self.gen].add_link(self.ip_link,
+                                               self.ip_rlink,
+                                               20,
+                                               10,
+                                               self.f2_innDict,
+                                               self.f2_innNum
+                                               )
+               
+                self.epoch += 1
+            #If nothing anomalistic happens, move to the next iteration
             else:
-                self.ticks += 1
+                self.epoch += 1
                 
             #Event handling
             for event in pg.event.get():
@@ -217,29 +332,37 @@ class Neat(object):
                 if event.type == pg.KEYUP:
                     if (event.key == pg.K_ESCAPE):
                         pg.quit()
-                
+                        
             #Update behaviour of fighters
             self.f1.get_data()
             self.f2.get_data()
             self.collect_data(self.f1, self.f2)
             self.collect_data(self.f2, self.f1)
-
+            
             #Update the neural network with the new data
             self.f1.commands = \
-            self.f1_pop[self.genome].update(self.f1.memory, "active")
+            self.f1_pop[self.gen].update(self.f1.memory, "active")
             self.f2.commands = \
-            self.f2_pop[self.genome].update(self.f2.memory, "active")
-
+            self.f2_pop[self.gen].update(self.f2.memory, "active")
+            
+            #Check if there are any commands sent to the ships
+            if self.epoch == 1:
+                if sum(self.f1.commands) == 0: 
+                    self.f1_stale = True
+                if sum(self.f2.commands) == 0: 
+                    self.f2_stale = True
+            
+            #Translate the commands into actions for the ship
             for cnd in range(0, self.o):
                 self.conversion(self.f1, self.f1.commands[cnd] * (cnd + 1))
                 self.conversion(self.f2, self.f2.commands[cnd] * (cnd + 1))
+                
                 #Move the objects and do the calculations            
-                if self.start == True:
-                    self.iterate()
-        
+                self.iterate()
+                
                 #Update the screen
                 pg.display.update()
-
+            
     ### Game functions ###
     #Background
     def shot(self):
@@ -277,7 +400,8 @@ class Neat(object):
                 off_x = int(fighter.x) - 0
                 off_y = int(fighter.y) - 0
             fighter.vel_x = -fighter.vel_x / 2
-            fighter.damage += 1
+            fighter.e_damage += 1
+
             edge = True
 
         #Right side        
@@ -294,7 +418,8 @@ class Neat(object):
                 off_x = int(fighter.x) - self.sc_w
                 off_y = int(fighter.y) - 0
             fighter.vel_x = -fighter.vel_x / 2
-            fighter.damage += 1
+            fighter.e_damage += 1
+
             edge = True
 
         #Top side        
@@ -311,7 +436,8 @@ class Neat(object):
                 off_x = int(fighter.x) - 0
                 off_y = int(fighter.y) - 0
             fighter.vel_y = -fighter.vel_y / 2
-            fighter.damage += 1
+            fighter.e_damage += 1
+
             edge = True
 
         #Bottom side        
@@ -328,7 +454,8 @@ class Neat(object):
                 off_x = int(fighter.x) - 0
                 off_y = int(fighter.y) - self.sc_h 
             fighter.vel_y = -fighter.vel_y / 2
-            fighter.damage += 1
+            fighter.e_damage += 1
+
             edge = True
         
         #if an adjustment has been made, recalculate the gun port and the mask
@@ -337,7 +464,7 @@ class Neat(object):
                                    fighter.y + fighter.r_center[1]]
             fighter.g_port()
             fighter.col_mask()
-    
+        
     #Calculate the new positions
     def iterate(self):
         #Clear screen with wallpaper
@@ -360,6 +487,9 @@ class Neat(object):
         #Display ships
         self.display_ship(self.f1)
         self.display_ship(self.f2)
+        
+        #Display status
+        self.status()
         
     #Shoot
     def shoot(self, fighter):
@@ -392,18 +522,21 @@ class Neat(object):
         self.screen.blit(fighter.r_model, (fighter.x, fighter.y))
     
     #Check for collision between shots and fighter
-    def impact_detect(self, fighter, st, i):
+    def impact_detect(self, fighter_1, fighter_2, st, ind):
         #Calculate offsets for the mask
-        off_x = int(fighter.x) - int(st.pos_x) + 13
-        off_y = int(fighter.y) - int(st.pos_y) + 13
+        off_x = int(fighter_1.x) - int(st.pos_x) + 13
+        off_y = int(fighter_1.y) - int(st.pos_y) + 13
         
         #Collision check
-        if st.mask.overlap(fighter.mask, (off_x, off_y)) != None:
+        if st.mask.overlap(fighter_1.mask, (off_x, off_y)) != None:
             
             #Delete the shot and add damage
-            self.shots.pop(i).__del__
-            fighter.damage += 1
-
+            self.shots.pop(ind).__del__
+            fighter_1.p_damage += 1
+            fighter_2.score += 1
+        
+        return fighter_1, fighter_2
+        
     #Check for collision between fighters
     def collision_detect(self, fighter_1, fighter_2):
         #Calculate offsets for the mask
@@ -420,8 +553,8 @@ class Neat(object):
             fighter_2.vel_y = -fighter_2.vel_y / 2
             
             #Add damage
-            fighter_1.damage += 1
-            fighter_2.damage += 1
+            fighter_1.e_damage += 100
+            fighter_2.e_damage += 100
             
             #Move the fighters
             self.move(fighter_1)
@@ -445,8 +578,12 @@ class Neat(object):
                     obj.pos_y -= obj.vel_y
                     obj.dtt_x = abs(self.f1.x - obj.pos_x)
                     obj.dtt_y = abs(self.f1.y - obj.pos_y)
+                
+                #Calculate the previous and current distance
                 obj.p_dtt = obj.c_dtt
                 obj.c_dtt = math.sqrt(obj.dtt_x**2 + obj.dtt_y**2)
+                
+                #See if the distance is closer or farther
                 if obj.p_dtt >= obj.c_dtt:
                     obj.incoming = True
                 elif obj.p_dtt < obj.c_dtt:
@@ -459,8 +596,8 @@ class Neat(object):
                                  )
                                  
                 #Check for hits
-                self.impact_detect(self.f1, obj, ind)
-                self.impact_detect(self.f2, obj, ind)
+                self.impact_detect(self.f1, self.f2, obj, ind)
+                self.impact_detect(self.f2, self.f1, obj, ind)
                 
                 #Delete the out of screen projectiles
                 if obj.pos_x <= 0 or \

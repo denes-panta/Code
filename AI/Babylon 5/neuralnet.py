@@ -1,8 +1,11 @@
 import parts as p
+import scipy as sc
 import numpy as np
+import math
+
 class Neuralnet(object):
     
-    def __init__(self, i, o, innDict, innNum):
+    def __init__(self, i, o):
         #Output vector
         self.output = []
         
@@ -10,10 +13,9 @@ class Neuralnet(object):
         self.i = i
         self.o = o
         
-        #Innovation number
-        self.innNum = innNum
-        self.innDict = innDict
-        
+        #Number of shots omitted out of 5
+        self.so = 4
+                
         #Node ID counter
         self.nodeID = 0
         self.linkID = 0
@@ -25,103 +27,339 @@ class Neuralnet(object):
         #Fitness scores
         self.r_fitness = None
         self.a_fitness = None
-        
-        #Number of offsprings
-        self.n_spawn = None
-        
-        #Create initial neural network
-        self.create_net()
-    
-    def get_innNum(self):
-        return self.innNum
-    
-    def get_innDict(self):
-        return self.innDict    
-    
-    def sigmoid(self, x):
-        y = 1/(1+np.exp(-x))    
-        return y
-    
-    def duplicate_link(self):
-        result = False
-        
-        return result
-    
-    def duplicate_node(self):
-        result = False
-        
-        return result
-    
-    def get_node_pos(self):
-        pass
-    
-    def create_net(self):
+                
+    def create_net(self, innDict, innNum):
         #Check if any innovations exists
-        if self.innNum == 0:
+        if innNum == 0:
             cr = True
         else:
             cr = False
-            
+        
+        #Nodes, links are not recurrent
+        rec = False
+        
         #Create the input nodes
         for ind in range(self.i):
-            self.add_node("input", cr)
-        
+            innDict, innNum = self.create_node("input", innDict, innNum, rec, cr)
+            
         #Create the output nodes
         for ind in range(self.o):
-            self.add_node("output", cr)
+            innDict, innNum = self.create_node("output", innDict, innNum, rec, cr)
         
-        inp_node = 0
+        #Create the bias node
+            innDict, innNum = self.create_node("bias", innDict, innNum, rec, cr)
+                
+        inp_node = 1
         
-        #Craete the connections between them
-        while self.nodeDict[inp_node].n_type == "input":
-            for out_node in range(inp_node, len(self.nodeDict)):
+        #Create the connections from the input nodes
+        while self.nodeDict[inp_node].n_type == "input" and \
+        inp_node <= (self.i - self.so):
+            #To each output nodes
+            for out_node in range(inp_node, (len(self.nodeDict) + 1)):
                 if self.nodeDict[out_node].n_type == "output":
-                    self.add_link(inp_node, out_node, cr)
-                    self.nodeDict[out_node].links.append(self.linkID)
+                    innDict, innNum = self.create_link(inp_node, 
+                                                       out_node, 
+                                                       innDict, 
+                                                       innNum,
+                                                       rec,
+                                                       cr 
+                                                       )
+                    
+                    #Append the LinkId to the node for futre reference
+                    self.nodeDict[inp_node].o_links.append(self.linkID)
+                    self.nodeDict[out_node].i_links.append(self.linkID)
             inp_node += 1
-        
-    def add_node(self, typ, innov = True):
-        if typ == "input" or typ == "output":
-            #Add node to node dictionary
-            self.nodeDict[self.nodeID] = p.Node(self.innNum,
-                                                self.nodeID,
-                                                typ
-                                                )
-            #Increase node counter
-            self.nodeID +=1
-        elif typ == "hidden":
-            pass
-        elif typ == "bias":
-            pass
+
+        return innDict, innNum
+    
+    def create_node(self, typ, innDict, innNum, rec = False, innov = True):
+        #Increase node counter
+        self.nodeID +=1
+        #Add node to node dictionary
+        self.nodeDict[self.nodeID] = p.Node(innNum,
+                                            self.nodeID,
+                                            typ,
+                                            rec
+                                            )
 
         #If the link is an innovation
         if innov == True:
-            #Add node to innovation dictionary
-            self.innDict[self.innNum] = p.Node(self.innNum,
-                                               self.nodeID,
-                                               typ
-                                               )
             #Increase innovation counter
-            self.innNum += 1
+            innNum += 1
+            #Add node to innovation dictionary
+            innDict[innNum] = p.Node(innNum,
+                                     self.nodeID,
+                                     typ,
+                                     rec
+                                     )
 
-    def add_link(self, inp, out, innov = True):
-        #Add link to node dictionary
-        self.linkDict[self.linkID] = p.Link(self.innNum, self.linkID, inp, out)
+        return innDict, innNum
+
+    def create_link(self, inp, out, innDict, innNum, rec = False, innov = True):
         #Increase the link counter
         self.linkID += 1
+        #Add link to node dictionary
+        self.linkDict[self.linkID] = p.Link(innNum, 
+                                            self.linkID, 
+                                            inp, 
+                                            out,
+                                            rec
+                                            )
         
         #If the link is an innovation
         if innov == True:
-            #Add link to innovation dictionary
-            self.innDict[self.innNum] = p.Link(self.innNum, self.linkID, inp, out)
             #Increase innovation number
-            self.innNum += 1
+            innNum += 1
+            #Add link to innovation dictionary
+            innDict[innNum] = p.Link(innNum, 
+                                     self.linkID, 
+                                     inp, 
+                                     out,
+                                     rec
+                                     )
+        
+        return innDict, innNum
+
+    def get_innovation(self, structure, innDict, nl1 = None, nl2 = None):
+        #Check links
+        if structure == "link":
+            for entry in range(1, (len(innDict) + 1)):
+                #Check only the defined structures
+                if innDict[entry].s_type == structure:
+
+                    #Check for origin and destination node
+                    if innDict[entry].inp_n == nl1 and \
+                    innDict[entry].out_n == nl2:
+                        innDict[entry].innID
+                    else:
+                        return None
+        #Check nodes
+        elif structure == "node":
+            for entry in range(1, (len(innDict) + 1)):
+                #Check only the defined structures
+                if innDict[entry].s_type == structure:
+
+                    #Check for input and output link
+                    if nl1 in innDict[entry].i_links == True and \
+                    nl2 in innDict[entry].o_links == True:
+                        return innDict[entry].nodeID
+                    else:
+                        return None
+
+    def duplicate_link(self, node_1, node_2):
+        result = False
+
+        for link in range(1, (len(self.linkDict) + 1)):
+            if self.linkDict[link].inp_n == node_1 and \
+            self.linkDict[link].out_n == node_2:
+                result = True
+
+        return result
+
+    def add_link(self, mutaProb, loopProb, numLoopTry, 
+                 numLinkTry, innDict, innNum):
+        #Check for mutation probability
+        if np.random.random() <= mutaProb:        
+            #Initiate the node variables
+            n_1 = None
+            n_2 = None
+            
+            #Set recursive variable to False
+            rec = False
+            
+            #Set max iterations for finding a node without Loop or existing Link
+            findLoop = numLoopTry
+            findLink = numLinkTry
+
+            #Check if a looped link is to be created
+            if np.random.random() <= loopProb:
+                while findLoop >= 0:
+
+                    findLoop -= 1
+                    #Get random node
+                    n = np.random.randint(1, (len(self.nodeDict) + 1))
+                    
+                    #Check if it is not recurrent, bias or input
+                    if self.nodeDict[n].recurr == False and \
+                    self.nodeDict[n].n_type != "input" and \
+                    self.nodeDict[n].n_type != "bias":
+                        n_1 = n_2 = n
+                        self.nodeDict[n].recurr = True
+                        rec = True
+                        #Close the loop
+                        findLoop = 0
+                    else:      
+                        return innDict, innNum
+
+            #Check if a new link has to be created
+            else:
+                while findLink >= 0:
+
+                    findLink -= 1
+                    #Get destination node
+                    n_2 = np.random.randint(1, (len(self.nodeDict) + 1))
+                    
+                    #Check if it is bias or input node
+                    if self.nodeDict[n_2].n_type != "bias" or \
+                    self.nodeDict[n_2].n_type != "input":
+                        #If not, get origin node
+                        n_1 = np.random.randint(1, (len(self.nodeDict) + 1))
+
+                        #Check if the connection is duplicate, or if it loop
+                        if n_1 != n_2 and \
+                        self.duplicate_link(n_1, n_2) == False:
+                            #Get direction of the connection
+
+                            if self.nodeDict[n_1].splitY > self.nodeDict[n_2].splitY:
+                                rec = True
+
+                            #Close the loop
+                            findLink = 0
+                            
+            #If no valid link has been found, return
+            if n_1 == None:                
+                return innDict, innNum
+
+            #Check to see if the innovation has already been discovered
+            if self.get_innovation("link", innDict, n_1, n_2) == None:
+                innov = False
+            else:
+                innov = True
+            innDict, innNum = \
+            self.create_link(n_1, n_2, innDict, innNum, rec, innov)
+            self.nodeDict[n_1].o_links.append(self.linkID)
+            self.nodeDict[n_2].i_links.append(self.linkID)
+
+        return innDict, innNum
+            
+    def add_node(self, mutaProb, numOldLink, innDict, innNum):    
+        #Check for mutation probability    
+        if np.random.random() <= mutaProb:
+            #New link found
+            done = False
+            
+            #New node
+            l = None
+            
+            #Tries to find link
+            findLink = numOldLink
+            
+            #Node Threshold
+            node_th = self.o + self.i + 5
+            
+            #If the genome is small
+            if (len(self.nodeDict) + 1) < node_th:
+                while findLink > 0:
+                    findLink -= 1
+                    
+                    #Choose an older link randomly
+                    l = np.random.randint(0, \
+                                          len(self.linkDict) - \
+                                          1 - \
+                                          int(math.sqrt((len(self.linkDict) + 1)))
+                                          )
+                    
+                    #Make sure that it is not a bias link, ecurrent or disabled
+                    if self.linkDict[l].enabled == True and \
+                    self.linkDict[l].recurr == False and \
+                    self.nodeDict[self.linkDict[l].inp_n].n_type != "bias":
+                        #Flag it if found
+                        done = True
+                        
+                        #Close the loop
+                        findLink = 0
+            
+                if done == False:
+                    return innDict, innNum
+                
+            #If the genome is large enough
+            else:
+                while done == False:
+                    #Choose any link randomly
+                    l = np.random.randint(1, (len(self.linkDict) + 1))
+
+                    #Make sure that it is not a bias link, recurrent or disabled
+                    if self.linkDict[l].enabled == True and \
+                    self.linkDict[l].recurr == False and \
+                    self.nodeDict[self.linkDict[l].inp_n].n_type != "bias":
+                        #Flag it if found
+                        done = True
+                        
+                        #Close the loop
+                        findLink = 0  
+            
+            #Disable the link
+            self.linkDict[l].enabled = False
+            
+            #Get it's weight, Y position, origin and destination
+            weight = self.linkDict[l].w
+            n_from = self.linkDict[l].inp_n
+            n_to = self.linkDict[l].out_n
+            depthY = (self.nodeDict[n_from].splitY + self.nodeDict[n_to].splitY)
+            depthY = depthY / 2
+            
+            #See if the innovation exists in the innovation table
+            nodeID = self.get_innovation("node", innDict, n_from, n_to)
+            
+            #Check if the innovation exists globally and in the genome
+            if nodeID != None and nodeID in self.nodeDict.keys():
+                nodeID = None
+            
+            #If the innovation doesn't exist
+            if nodeID == None:
+                #Create the new node
+                innDict, innNum = \
+                self.create_node("hidden", innDict, innNum, False, True)
+                self.nodeDict[self.nodeID].splitY = depthY
+                
+                #Create the first link
+                innDict, innNum = \
+                self.create_link(n_from, self.nodeID, innDict, innNum, False, True)
+                #Append the LinkId to the node for futre reference
+                self.nodeDict[n_from].o_links.append(self.linkID)
+                self.nodeDict[self.nodeID].i_links.append(self.linkID)
+                
+                #Create the second link
+                innDict, innNum = \
+                self.create_link(self.nodeID, n_to, innDict, innNum, False, True)
+                #Append the LinkId to the node for futre reference
+                self.nodeDict[(self.nodeID)].o_links.append(self.linkID)
+                self.nodeDict[n_to].i_links.append(self.linkID)
+                self.linkDict[self.linkID].w = weight
+            
+            #If the innovation already exists
+            else:
+                #Create the new node
+                innDict, innNum = \
+                self.create_node("hidden", innDict, innNum, False, False)
+                
+                #Create the first link
+                innID = self.get_innovation("link", innDict, n_from, self.nodeID)
+                innDict, innNum = \
+                self.create_link(n_from, self.nodeID, innDict, innID, False, False)
+                #Append the LinkId to the node for futre reference
+                self.nodeDict[n_from].o_links.append(self.linkID)
+                self.nodeDict[self.nodeID].i_links.append(self.linkID)
+
+                #Create the second link
+                innID = self.get_innovation("link", innDict, self.nodeID, n_to)
+                innDict, innNum = \
+                self.create_link(self.nodeID, n_to, innDict, innID, False, False)
+                #Append the LinkId to the node for future reference
+                self.nodeDict[self.nodeID].o_links.append(self.linkID)
+                self.nodeDict[n_to].i_links.append(self.linkID)
+                self.linkDict[self.linkID].w = weight
+
+        return innDict, innNum
+    
+    def mod_weight(self):
+        pass        
 
     def get_depth(self):
         pass
 
     def update(self, input_data, method):
-
+        #Check the method and define the repetition cycle number
         if method == "snapshot":
             flushCount = self.get_depth()
         elif method == "active":
@@ -130,27 +368,28 @@ class Neuralnet(object):
         for i in range(flushCount):
             #Clear the output vector
             self.output.clear()
-            node = 0
+            node = 1
             
             #Set the input node's data with the input_data
             while self.nodeDict[node].n_type == "input":
-                self.nodeDict[node].value = input_data[node]
+                self.nodeDict[node].value = input_data[node - 1]
                 node += 1
             
             #Iterate through the rest of the nodes
-            while node < len(self.nodeDict):
+            while node < (len(self.nodeDict) + 1):
                 n_sum = 0
 
                 #Get the links leading into the node
-                for link, ind in enumerate(self.nodeDict[node].links):
-
-                    #Take the weight of each link and multiply it with the
-                    #connected node's value
-                    n_sum += self.linkDict[link].w * \
-                             self.nodeDict[self.linkDict[link].inp_n].value                
+                for ind, link in enumerate(self.nodeDict[node].i_links):
+                    #Check if the link is enabled
+                    if self.linkDict[link].enabled == True:
+                        #Take the weight of each link and multiply it with the
+                        #connected node's value
+                        n_sum += self.linkDict[link].w * \
+                                 self.nodeDict[self.linkDict[link].inp_n].value                
 
                 #Set the value of the node with the activated n_sum value
-                self.nodeDict[node].value = self.sigmoid(n_sum)
+                self.nodeDict[node].value = sc.special.expit(n_sum)
                 
                 #If it is an output node, put the value into the output list
                 if self.nodeDict[node].n_type == "output":
@@ -158,7 +397,7 @@ class Neuralnet(object):
                 node += 1
         
         if method == "snapshot":
-            for node in range(len(self.nodeDict)):
+            for node in range(1, (len(self.nodeDict) + 1)):
                 self.nodeDict[node].value = 0
         
         return self.output

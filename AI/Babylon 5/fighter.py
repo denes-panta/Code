@@ -62,7 +62,8 @@ class Sa23e(object):
         
         #Score & Damage
         self.score = 0
-        self.damage = 0
+        self.p_damage = 0
+        self.e_damage = 0
         
         #Data
         self.behav = []
@@ -76,6 +77,19 @@ class Sa23e(object):
     def __del__(self):
         pass
         
+    def fitness(self, mode):   
+        print(self.score)
+        print(self.p_damage)
+        print(self.e_damage)
+        if mode == "agressive":
+            fitness = -self.e_damage - self.p_damage + 2 * self.score
+        elif mode == "defensive":
+            fitness = -self.e_damage - 2 * self.p_damage + self.score
+        elif mode == "normal":
+            fitness = -self.e_damage - self.p_damage + self.score            
+
+        return fitness
+    
     def counter_null(self):
         Sa23e._ids = 0
         

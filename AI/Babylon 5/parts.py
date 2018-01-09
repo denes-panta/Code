@@ -1,7 +1,7 @@
 import numpy as np
 
 class Node(object):
-    def __init__(self, innID, nodeID, typ):
+    def __init__(self, innID, nodeID, typ, rec):
         #Innovation ID
         self.innID = innID
         
@@ -14,28 +14,35 @@ class Node(object):
         #Node Type
         self.n_type = typ
         
-        #Input
-        self.value = 0.0
+        #Value
+        if typ == "bias":
+            self.value = 1
+        else:
+            self.value = 0.0
                 
         #Recurrent or not
-        self.recurr = False
+        self.recurr = rec
         
         #Activation curvature
         self.act = np.random.rand(0, 1)
         
         #Position in the nework grid
         self.splitX = None
-        if typ == "input":
+        
+        if typ == "input" or typ == "bias":
             self.splitY = 0
         elif typ == "output":
             self.splitY = 1
         
         #Links into the neuron
-        self.links = []
+        self.i_links = []
+        
+        #Links out of the neuron
+        self.o_links = []
       
     
 class Link(object):
-    def __init__(self, innID, linkID, inp, out):
+    def __init__(self, innID, linkID, inp, out, rec):
         #Innovation ID
         self.innID = innID
         
@@ -58,4 +65,4 @@ class Link(object):
         self.enabled = True
         
         #Recurrent or not
-        self.recurr = False
+        self.recurr = rec
