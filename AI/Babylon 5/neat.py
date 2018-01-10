@@ -6,19 +6,18 @@ import shot as sh
 import neuralnet as nn
 import time
 import mcu
-from multiprocessing import Pool
- 
+
 class Neat(object):
     #Define the color constants
     FONT = (204, 204, 204)
+    DISJOINT = 1  
+    EXESS = 1 
+    MATCHED = 0.4
     
     def __init__(self, pop_size):
         
-        #Call pool
-#        self.pool = Pool()
-        
         #Initialise the control variables
-        self.running = False
+        self.running = True
         
         #Max epoch
         self.epoch = 0
@@ -225,20 +224,29 @@ class Neat(object):
     
     #Display scores
     def status(self):
+        #Number of epochs
+        l_bluesc = self.fnt.render("Epoch: %d" % (self.epoch), 
+                                   True, 
+                                   (self.FONT))
+        self.screen.blit(l_bluesc, (20, self.sc_h - 180))
+        
         #Fitness Score for the Blus ship
-        l_bluesc = self.fnt.render("Blue fitness: %d" % (self.f1.fitness("defensive")), 
+        l_bluesc = self.fnt.render("Blue fitness: %d" % \
+                                   (self.f1.fitness("defensive")), 
                                    True, 
                                    (self.FONT))
         self.screen.blit(l_bluesc, (20, self.sc_h - 160))
 
         #Fitness Score for the Red ship
-        l_redesc = self.fnt.render("Red fitness: %d" % (self.f2.fitness("agressive")), 
+        l_redesc = self.fnt.render("Red fitness: %d" % \
+                                   (self.f2.fitness("agressive")), 
                                    True, 
                                    (self.FONT))
         self.screen.blit(l_redesc, (20, self.sc_h - 140))
 
         #Current generation 
-        l_curgen = self.fnt.render("Current generation: %d" % (self.generation + 1), 
+        l_curgen = self.fnt.render("Current generation: %d" % \
+                                   (self.generation + 1), 
                                    True, 
                                    (self.FONT))
         self.screen.blit(l_curgen, (20, self.sc_h - 120))
@@ -252,9 +260,8 @@ class Neat(object):
     ### Engine ###
     #Engine
     def engine(self):
-        self.running = True
         while self.running == True:
-            #Once 50 iterations have passed, reset to beginning
+            #Once X iterations have passed, reset to beginning
             #and load the next neural network
             if self.epoch == self.max_epoch or \
             (self.f1_stale == True or self.f2_stale == True):
@@ -265,17 +272,28 @@ class Neat(object):
                 else:
                     self.f1_pop[self.gen].r_fitness = self.f1.fitness("defensive")
                     self.f2_pop[self.gen].r_fitness = self.f2.fitness("agressive")
-                    
+                                
+                #Reset the game objects
                 self.reset()
+                
+                #Zero the epoch
                 self.epoch = 0
+                
+                #Reset the stale variable
                 self.f1_stale = False
                 self.f2_stale = False
                 
                 #Check if we reached the last genome
                 if self.gen == (self.n - 1):
+                    #Calculate
+
+                    #Set genome counter to 0
                     self.gen = 0
+
+                    #Increment generation
                     self.generation += 1
                 else:
+                    #Increase genome counter
                     self.gen += 1
             
             #If it is the iteration, evolve the genome
@@ -315,7 +333,26 @@ class Neat(object):
                                                self.f2_innDict,
                                                self.f2_innNum
                                                )
-               
+                #Replace weight
+                self.f1_pop[self.gen].mutate_weight(self.mr_weight, 
+                                                    self.rp_weight, 
+                                                    "COLD"
+                                                    )
+                self.f2_pop[self.gen].mutate_weight(self.mr_weight, 
+                                                    self.rp_weight, 
+                                                    "COLD"
+                                                    )
+
+                #Mutate weight
+                self.f1_pop[self.gen].mutate_weight(self.mr_weight, 
+                                                    self.rp_weight, 
+                                                    "GAUSS"
+                                                    )
+                self.f2_pop[self.gen].mutate_weight(self.mr_weight, 
+                                                    self.rp_weight, 
+                                                    "GAUSS"
+                                                    )
+
                 self.epoch += 1
             #If nothing anomalistic happens, move to the next iteration
             else:
@@ -401,7 +438,6 @@ class Neat(object):
                 off_y = int(fighter.y) - 0
             fighter.vel_x = -fighter.vel_x / 2
             fighter.e_damage += 1
-
             edge = True
 
         #Right side        
@@ -419,7 +455,6 @@ class Neat(object):
                 off_y = int(fighter.y) - 0
             fighter.vel_x = -fighter.vel_x / 2
             fighter.e_damage += 1
-
             edge = True
 
         #Top side        
@@ -437,7 +472,6 @@ class Neat(object):
                 off_y = int(fighter.y) - 0
             fighter.vel_y = -fighter.vel_y / 2
             fighter.e_damage += 1
-
             edge = True
 
         #Bottom side        
@@ -455,7 +489,6 @@ class Neat(object):
                 off_y = int(fighter.y) - self.sc_h 
             fighter.vel_y = -fighter.vel_y / 2
             fighter.e_damage += 1
-
             edge = True
         
         #if an adjustment has been made, recalculate the gun port and the mask
@@ -515,12 +548,12 @@ class Neat(object):
         #Update the position of the gun port
         fighter.gun_port[0] += fighter.vel_x
         fighter.gun_port[1] += fighter.vel_y
-
+        
     #Display the fighter model
     def display_ship(self, fighter):        
         #Display the ship
         self.screen.blit(fighter.r_model, (fighter.x, fighter.y))
-    
+        
     #Check for collision between shots and fighter
     def impact_detect(self, fighter_1, fighter_2, st, ind):
         #Calculate offsets for the mask
@@ -553,8 +586,8 @@ class Neat(object):
             fighter_2.vel_y = -fighter_2.vel_y / 2
             
             #Add damage
-            fighter_1.e_damage += 100
-            fighter_2.e_damage += 100
+            fighter_1.e_damage += 1
+            fighter_2.e_damage += 1
             
             #Move the fighters
             self.move(fighter_1)

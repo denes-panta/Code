@@ -27,7 +27,13 @@ class Neuralnet(object):
         #Fitness scores
         self.r_fitness = None
         self.a_fitness = None
-                
+        
+        #Speciation score
+        self.spec_score = None
+        
+        #Species it belongs to
+        self.species = None
+        
     def create_net(self, innDict, innNum):
         #Check if any innovations exists
         if innNum == 0:
@@ -119,7 +125,8 @@ class Neuralnet(object):
                                      )
         
         return innDict, innNum
-
+    
+    #Get innovationID for links and nodeID for Nodes
     def get_innovation(self, structure, innDict, nl1 = None, nl2 = None):
         #Check links
         if structure == "link":
@@ -145,7 +152,8 @@ class Neuralnet(object):
                         return innDict[entry].nodeID
                     else:
                         return None
-
+    
+    #Check if the link already exists
     def duplicate_link(self, node_1, node_2):
         result = False
 
@@ -225,8 +233,12 @@ class Neuralnet(object):
                 innov = False
             else:
                 innov = True
+                
+            #Create new link
             innDict, innNum = \
             self.create_link(n_1, n_2, innDict, innNum, rec, innov)
+            
+            #Append the linkID to the origin and destination nodes
             self.nodeDict[n_1].o_links.append(self.linkID)
             self.nodeDict[n_2].i_links.append(self.linkID)
 
@@ -322,6 +334,7 @@ class Neuralnet(object):
                 #Create the second link
                 innDict, innNum = \
                 self.create_link(self.nodeID, n_to, innDict, innNum, False, True)
+                
                 #Append the LinkId to the node for futre reference
                 self.nodeDict[(self.nodeID)].o_links.append(self.linkID)
                 self.nodeDict[n_to].i_links.append(self.linkID)
@@ -337,6 +350,7 @@ class Neuralnet(object):
                 innID = self.get_innovation("link", innDict, n_from, self.nodeID)
                 innDict, innNum = \
                 self.create_link(n_from, self.nodeID, innDict, innID, False, False)
+                
                 #Append the LinkId to the node for futre reference
                 self.nodeDict[n_from].o_links.append(self.linkID)
                 self.nodeDict[self.nodeID].i_links.append(self.linkID)
@@ -345,6 +359,7 @@ class Neuralnet(object):
                 innID = self.get_innovation("link", innDict, self.nodeID, n_to)
                 innDict, innNum = \
                 self.create_link(self.nodeID, n_to, innDict, innID, False, False)
+                
                 #Append the LinkId to the node for future reference
                 self.nodeDict[self.nodeID].o_links.append(self.linkID)
                 self.nodeDict[n_to].i_links.append(self.linkID)
@@ -352,11 +367,45 @@ class Neuralnet(object):
 
         return innDict, innNum
     
-    def mod_weight(self):
-        pass        
+    def mutate_weight(self, mutaProb, replcProb, muta_type):
+        #Do severe mutation
+        if np.random.random() > 0.5:
+            severe = True
+        else:
+            severe = False
+            
+        #Get number of links
+        num_links = len(self.linkDict) + 1
+        new_links = int(num_links * 0.8)
+        
+        #Iterate through the links
+        for link in range(1, num_links):
+            if severe == True:
+                gausspoint = 0.7
+                coldgausspoint = 0.9
+            elif num_links >= 10 and link > new_links:
+                gausspoint = 0.5
+                coldgausspoint = 0.7
+            else:
+                if np.random.random() > 0.5:
+                    gausspoint = mutaProb
+                    coldgausspoint = replcProb + 0.1
+                else:
+                    gausspoint = mutaProb
+                    coldgausspoint = replcProb
+            
+            if muta_type == "GAUSS":
+                if np.random.random() < gausspoint:
+                    self.linkDict[link].w += np.random.randn()
+                elif np.random.random() < coldgausspoint:
+                    self.linkDict[link].w += np.random.randn()
+                    
+            elif muta_type == "COLD":
+               self.linkDict[link].w = np.random.randn() 
+            
 
     def get_depth(self):
-        pass
+        return 1
 
     def update(self, input_data, method):
         #Check the method and define the repetition cycle number
@@ -390,7 +439,7 @@ class Neuralnet(object):
 
                 #Set the value of the node with the activated n_sum value
                 self.nodeDict[node].value = sc.special.expit(n_sum)
-                
+
                 #If it is an output node, put the value into the output list
                 if self.nodeDict[node].n_type == "output":
                     self.output.append(int(self.nodeDict[node].value))            

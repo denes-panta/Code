@@ -78,9 +78,6 @@ class Sa23e(object):
         pass
         
     def fitness(self, mode):   
-        print(self.score)
-        print(self.p_damage)
-        print(self.e_damage)
         if mode == "agressive":
             fitness = -self.e_damage - self.p_damage + 2 * self.score
         elif mode == "defensive":

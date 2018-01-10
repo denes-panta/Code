@@ -1,4 +1,5 @@
 import numpy as np
+from operator import itemgetter
 
 class Node(object):
     def __init__(self, innID, nodeID, typ, rec):
@@ -66,3 +67,19 @@ class Link(object):
         
         #Recurrent or not
         self.recurr = rec
+
+
+class Species(object):
+    def __init__(self, n_sp, lead):
+        #Species number
+        self.species = n_sp
+        
+        #Paragon of the species
+        self.leader = lead
+    
+        #List of species
+        #Structure: [[Genome, fitness score]]
+        self.rank = []
+        
+    def sort_species(self):
+        sorted(self.rank, key = itemgetter(1))
