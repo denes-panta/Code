@@ -6,6 +6,7 @@ import math
 class Neuralnet(object):
     
     def __init__(self, i, o):
+
         #Output vector
         self.output = []
         
@@ -27,12 +28,19 @@ class Neuralnet(object):
         #Fitness scores
         self.r_fitness = None
         self.a_fitness = None
+        self.s_fitness = None
         
         #Speciation score
         self.spec_score = None
         
         #Species it belongs to
-        self.species = None
+        self.species = 1
+        
+        #Age
+        self.age = 1
+        
+    def __del__(self):
+        pass
         
     def create_net(self, innDict, innNum):
         #Check if any innovations exists

@@ -1,5 +1,4 @@
 import numpy as np
-from operator import itemgetter
 
 class Node(object):
     def __init__(self, innID, nodeID, typ, rec):
@@ -67,19 +66,34 @@ class Link(object):
         
         #Recurrent or not
         self.recurr = rec
-
-
+        
+        
 class Species(object):
-    def __init__(self, n_sp, lead):
+    def __init__(self):
         #Species number
-        self.species = n_sp
+        self.specNum = None
+        
+        #Alive or Dead
+        self.alive = True
         
         #Paragon of the species
-        self.leader = lead
-    
-        #List of species
-        #Structure: [[Genome, fitness score]]
-        self.rank = []
+        self.leader = None
         
-    def sort_species(self):
-        sorted(self.rank, key = itemgetter(1))
+        #Leader score
+        self.lead_sore = None
+        
+        #Epoch since improvement
+        self.impEpoch = 0
+        
+        #Historical best score
+        self.histBest = 0
+        
+        #Number of speciements to spawn
+        self.spawn = 0
+        
+        #Number of species
+        self.number = 0
+        
+        #List of genomes and scores of the species
+        #Structure: [[genes, adj fitness score]]
+        self.adjScore = []

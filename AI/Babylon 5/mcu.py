@@ -1,18 +1,147 @@
 import numpy as np
 import parts as p
+import math
+from operator import itemgetter
 
-class mcu(object):
-    def __init__(self):
-        pass
+class evolution(object):
+    def spawn(pop, specDict, specList, sameSpecies):
+        #Threshold to assign genomes into the same species
+        threshold = sameSpecies
+        
+        #Link of the new generation of genomes
+        new_gen = []
+        
+        #
+        for ind, species in enumerate(specList):
+            new_gen.append(pop[specDict[species].leader])
+
+        for ind, species in enumerate(specList):        
+            p1 = None
+            p2 = None
+            
+            to_spawn = math.ceil(specDict[species])
+            
+            if specDict[species].number > 1:
+                while to_spawn > 0:
+                    while p1 == p2:
+                        p1 = \
+                        np.random.random_sample(specDict[species].adjScore)[0]
+                        p2 = \
+                        np.random.random_sample(specDict[species].adjScore)[0]
+                    
+                    new_genome = evolution.crossover(pop[p1], pop[p2])
+                    
+                    
+                    speciation(g, l)
+        while len(new_gen) > len(pop):
+            darwin = np.random.randint((len(specList) + 1), len(new_gen))
+            new_gen[darwin].__del__()
+            
+        return new_gen
     
-    def epoch(self):
-        pass        
+    #Calculate adjusted fitness scores for the population
+    def adjust_fitness(pop, y_th, y_mod, o_th, o_mod):     
+        #Define adjuster parameter at 1
+        adjuster = 1
+        
+        for ind, gnome in enumerate(pop):                
+            #If the raw score is below zero, set the raw score to 0
+            if gnome.r_fitness < 0:
+                gnome.r_fitness = 0
+            
+            #Apply the youth / old age adjustments
+            if gnome.age <= y_th:
+                adjuster = y_mod
+            elif gnome.age >= o_th:
+                adjuster = o_mod
+                
+            #Get the adjusted scores
+            gnome.a_fitness = gnome.r_fitness * adjuster
+            
+        return pop
     
-    def get_cards(self, pop):
+    #Get the relevant data from the past generation
+    def get_cards(pop, specDict, specList):
+        #Sum of the fitness score for the population
+        fit_sum = 0
+        
         #Dictionary for the species data
-        species = dict()
-        species[specNum] = p.Species()
-    
+        for ind, species in enumerate(specList):
+            specDict[species].adjScore.clear()
+        
+        #Clear the species list
+        specList.clear()
+
+        for ind, genome in enumerate(pop):
+            #Append the active species list with the species number
+            if genome.species not in specList:
+                specList.append(genome.species)
+                
+            #If the species doesn't exist, create a card for it
+            if specDict.get(genome.species, None) == None:
+                specDict[genome.species] = p.Species()
+            
+            #Fill in the values
+            #Species number
+            specDict[genome.species].species = genome.species
+            
+            #Get leader and leader score
+            if specDict[genome.species].leader == None:
+                specDict[genome.species].leader = ind
+                specDict[genome.species].lead_score = genome.a_fitness
+            elif specDict[genome.species].lead_score < genome.a_fitness:
+                specDict[genome.species].leader = ind
+                specDict[genome.species].lead_score = genome.a_fitness
+
+            #Get the adjusted and shared scores with the genome number
+            l = [ind, genome.a_fitness]
+            specDict[genome.species].adjScore.append(l)
+
+        #Check to see if there has been any improvement in the species'
+        for ind, species in enumerate(specList):
+            if specDict[species].lead_score > specDict[species].histBest:
+                specDict[species].histBest = specDict[species].lead_score
+                specDict[species].impEpoch = 0
+            else:
+                specDict[species].impEpoch += 1
+                if specDict[species].impEpoch == 15:
+                    specDict[species].alive = False
+        
+        #Sort the scores
+        for ind, species in enumerate(specList):
+            #Sort the scores
+            specDict[species].adjScore = sorted(specDict[species].adjScore, 
+                                                key = itemgetter(1), 
+                                                reverse = True
+                                                )
+            #Get the number of genomes
+            n_genome = len(specDict[species].adjScore)
+            specDict[species].number = n_genome
+            
+            #Iterate through the fitness scores of each species and share it
+            for i, score in enumerate(specDict[species].adjScore):
+                #Share the fitness scores
+                    score[1] /= n_genome
+                    fit_sum += score[1]
+            
+        #Calculate the average adj. fitness score for the population
+        fit_avg = fit_sum / len(pop)
+
+        for ind, species in enumerate(specList):            
+            #Iterate through the fitness scores of each species and share it
+            for i, score in enumerate(specDict[species].adjScore):
+                score.append(score[1] / fit_avg)
+                specDict[species].spawn += score[1] / fit_avg               
+
+            #Get the last element of the top 20% of genomes
+            last = math.ceil(len(specDict[species].adjScore) * 0.2)
+            
+            #Get the top 20%
+            specDict[genome.species].adjScore = \
+            specDict[genome.species].adjScore[0:last]
+
+        return specDict, specList
+
     #Get full genome from the link and node dictionary
     def get_genome(self, linkDict, nodeDict):
         #Create a list for the innovation numbers in the genome
@@ -40,20 +169,20 @@ class mcu(object):
         return mx, mn
     
     #Crossover function
-    def crossover(self, p1, p2):
+    def crossover(p1, p2):
         #Get the length of the two genes
         p1_genes = len(p1.linkDict) + len(p1.nodeDict)
         p2_genes = len(p2.linkDict) + len(p2.nodeDict)
         
         #Get the actual genomes
-        p1_genome = self.get_genome(p1.linkDict, p1.nodeDict)
-        p2_genome = self.get_genome(p2.linkDict, p2.nodeDict)
+        p1_genome = evolution.get_genome(p1.linkDict, p1.nodeDict)
+        p2_genome = evolution.get_genome(p2.linkDict, p2.nodeDict)
         
         #Create the child dictionaries
         ch_linkDict = dict()
         ch_nodeDict = dict()
 
-        mx, g1_max, g2_max = self.get_max(p1_genome, p2_genome)
+        mx, g1_max, g2_max = evolution.get_max(p1_genome, p2_genome)
          
         #Compare fitness scores
         if p1.a_fitness == p2.a_fitness:
@@ -90,8 +219,8 @@ class mcu(object):
         #Cycle through all the available innovations
         for key in range(1, mx):
             #If the innovation exists in both genomes
-            if best.get(key, default = None) != None and \
-            worst.get(key, default = None) != None:
+            if best.get(key, None) != None and \
+            worst.get(key, None) != None:
                 #Pick one at random
                 pick = np.random.randint(0, 2)
                 if pick == 0:
@@ -106,8 +235,8 @@ class mcu(object):
                     ch_nodeDict[origin.nodeID] = origin
                     
             #If the innovation only exists in the better one
-            elif best.get(key, default = None) != None and \
-            worst.get(key, default = None) == None:
+            elif best.get(key, None) != None and \
+            worst.get(key, None) == None:
                 #assign it to the appropriate dictionary
                 if best[key].s_type == "link":
                     ch_linkDict[best[key].linkID] = best[key]
@@ -127,14 +256,20 @@ class mcu(object):
                                 
         return ch_nodeDict, ch_linkDict
     
-    def speciation(self, g, l, cDjoint, cExcess, cMatch):
+    #Speciation of two genomes
+    def speciation(g, l):
+        #Tuning Variable
+        cDjoint = 1
+        cExcess = 1
+        cMatch = 0.4
+        
         #Get the length of the geonmes
         g_genes = len(g.linkDict) + len(g.nodeDict)
         l_genes = len(l.linkDict) + len(l.nodeDict)
 
         #Get the actual genomes
-        g_genome = self.get_genome(g.linkDict, g.nodeDict)
-        l_genome = self.get_genome(l.linkDict, l.nodeDict)
+        g_genome = evolution.get_genome(g.linkDict, g.nodeDict)
+        l_genome = evolution.get_genome(l.linkDict, l.nodeDict)
         
         #Determine the longer gene
         if g_genes > l_genes:
@@ -143,7 +278,7 @@ class mcu(object):
             long = l_genome
                     
         #Maximum innovation number
-        mx, mn = self.get_max(g_genome, l_genome)
+        mx, mn = evolution.get_max(g_genome, l_genome)
         
         #Sub-Scores
         numDisjoint = 0
@@ -154,8 +289,8 @@ class mcu(object):
         #Cycle through all the available innovations
         for key in range(1, mx):
             #If the innovation exists in both genomes
-            if g_genome.get(key, default = None) != None and \
-            l_genome.get(key, default = None) != None:
+            if g_genome.get(key, None) != None and \
+            l_genome.get(key, None) != None:
                 #Increased match counter
                 numMatch += 1
                 
@@ -164,24 +299,22 @@ class mcu(object):
                     diffWeight += abs(g_genome[key].w - l_genome[key].w)
             
             #Check if the gene is missing from either genome
-            elif g_genome.get(key, default = None) != None or \
-            l_genome.get(key, default = None) != None:
+            elif g_genome.get(key, None) != None or \
+            l_genome.get(key, None) != None:
                 #If the innovation number is only in one, count as excess
-                if g_genome.get(key, default = None) > mn or \
-                l_genome.get(key, default = None) > mn:
+                if g_genome.get(key, None) > mn or \
+                l_genome.get(key, None) > mn:
                     numExcess += 1
     
                 #If the innovation number is in both, count as disjoint
-                if g_genome.get(key, default = None) <= mn or \
-                l_genome.get(key, default = None) <= mn:
+                if g_genome.get(key, None) <= mn or \
+                l_genome.get(key, None) <= mn:
                     numDisjoint += 1
         
         #Get the actuall species score
         score = numDisjoint * cDjoint / long + \
                 numExcess * cExcess / long + \
-                numMatch * diffWeight / numMatch
+                diffWeight * cMatch / numMatch
         
         return score
-        
-        
-    
+            

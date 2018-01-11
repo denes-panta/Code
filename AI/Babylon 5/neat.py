@@ -21,7 +21,7 @@ class Neat(object):
         
         #Max epoch
         self.epoch = 0
-        self.max_epoch = 50
+        self.max_epoch = 10
         
         #Background
         self.space = self.bg()
@@ -73,10 +73,6 @@ class Neat(object):
         self.collect_data(self.f2, self.f2)
         
         #Initialize the Neat variables
-        #Stale genome
-        self.f1_stale = False
-        self.f2_stale = False
-        
         #Number of Inputs and Outputs
         self.i = len(self.f1.memory)
         self.o = 8
@@ -89,6 +85,14 @@ class Neat(object):
         self.f1_innDict = dict()
         self.f2_innDict = dict()
         
+        #Species data dictionary
+        self.f1_specDict = dict()
+        self.f2_specDict = dict()
+        
+        #List of active species
+        self.f1_specList = []
+        self.f2_specList = []
+        
         #Generation counter
         self.generation = 0
         
@@ -99,7 +103,6 @@ class Neat(object):
         self.n = pop_size
         
         #Mutation/replacement probabilities/rates
-        self.mp_activation = 0.1
         self.mr_weight = 0.2
         self.rp_weight = 0.1
         
@@ -111,18 +114,12 @@ class Neat(object):
         #Crossover rate
         self.crossover = 0.7
         
-        #Max mutation perturbation
-        self.mm_perturb = 0.5
-        
         #Species probabilities
         self.th_compatibility = 0.26
         self.th_oldage = 50
         self.py_oldage = 0.7
         self.th_youth = 10
         self.bs_youth = 1.3
-        
-        #Number of offsprings
-        self.n_spawn = None
         
         #Create populations of NNs for both fighters
         self.f1_pop, self.f1_innDict, self.f1_innNum = \
@@ -194,7 +191,7 @@ class Neat(object):
                                 )
         
         #Sort the projectiles by distance to target
-        sorted(own.incoming, key = itemgetter(0))
+        own.incoming = sorted(own.incoming, key = itemgetter(0))
         
         #Get the x,y coordinates of the 5 closest shots        
         for ind, lst in enumerate(own.incoming):
@@ -263,16 +260,11 @@ class Neat(object):
         while self.running == True:
             #Once X iterations have passed, reset to beginning
             #and load the next neural network
-            if self.epoch == self.max_epoch or \
-            (self.f1_stale == True or self.f2_stale == True):
-                #Adjust fitness scores
-                if (self.f1_stale == True or self.f2_stale == True):
-                    self.f1_pop[self.gen].r_fitness = None
-                    self.f2_pop[self.gen].r_fitness = None                    
-                else:
-                    self.f1_pop[self.gen].r_fitness = self.f1.fitness("defensive")
-                    self.f2_pop[self.gen].r_fitness = self.f2.fitness("agressive")
-                                
+            if self.epoch == self.max_epoch:
+                #Get fitness scores
+                self.f1_pop[self.gen].r_fitness = self.f1.fitness("defensive")
+                self.f2_pop[self.gen].r_fitness = self.f2.fitness("agressive")
+                            
                 #Reset the game objects
                 self.reset()
                 
@@ -283,9 +275,102 @@ class Neat(object):
                 self.f1_stale = False
                 self.f2_stale = False
                 
-                #Check if we reached the last genome
+                #Check if we reached the last genome, do crossover
                 if self.gen == (self.n - 1):
-                    #Calculate
+                    #Calculate the adjusted fitness scores
+                    self.f1_pop = mcu.evolution.adjust_fitness(self.f1_pop,
+                                                               self.th_youth,
+                                                               self.bs_youth,
+                                                               self.th_oldage, 
+                                                               self.py_oldage
+                                                               )
+                    self.f2_pop = mcu.evolution.adjust_fitness(self.f2_pop,
+                                                               self.th_youth,
+                                                               self.bs_youth,
+                                                               self.th_oldage, 
+                                                               self.py_oldage
+                                                               )
+                    
+                    #Get Species Score Cards
+                    self.f1_specDict, self.f1_specList = \
+                    mcu.evolution.get_cards(self.f1_pop, 
+                                            self.f1_specDict, 
+                                            self.f1_specList
+                                            )
+
+                    self.f2_specDict, self.f2_specList = \
+                    mcu.evolution.get_cards(self.f2_pop, 
+                                            self.f2_specDict, 
+                                            self.f2_specList
+                                            )
+                    
+                    #Evolve the new generation of genomes
+                    self.f1_pop = mcu.evolution.spawn(self.f1_pop,
+                                                      self.f1_specDict, 
+                                                      self.f1_specList,
+                                                      self.th_compatibility
+                                                      )
+                    
+                    self.f2_pop = mcu.evolution.spawn(self.f2_pop,
+                                                      self.f2_specDict, 
+                                                      self.f2_specList,
+                                                      self.th_compatibility
+                                                      )
+                    
+                    #Add Node to fighter 1
+                    self.f1_innDict, self.f1_innNum = \
+                    self.f1_pop[self.gen].add_node(self.ip_node, 
+                                                   20, 
+                                                   self.f1_innDict, 
+                                                   self.f1_innNum
+                                                   )
+                    
+                    #Add link to fighter 1
+                    self.f1_innDict, self.f1_innNum = \
+                    self.f1_pop[self.gen].add_link(self.ip_link,
+                                                   self.ip_rlink, 
+                                                   20, 
+                                                   10, 
+                                                   self.f1_innDict,
+                                                   self.f1_innNum
+                                                   )
+                    
+                    #Add Node to fighter 2
+                    self.f2_innDict, self.f2_innNum = \
+                    self.f2_pop[self.gen].add_node(self.ip_node, 
+                                                   20, 
+                                                   self.f2_innDict, 
+                                                   self.f2_innNum
+                                                   )
+                    
+                    #Add link to fighter 2
+                    self.f2_innDict, self.f2_innNum = \
+                    self.f2_pop[self.gen].add_link(self.ip_link,
+                                                   self.ip_rlink,
+                                                   20,
+                                                   10,
+                                                   self.f2_innDict,
+                                                   self.f2_innNum
+                                                   )
+                    #Replace weight
+                    self.f1_pop[self.gen].mutate_weight(self.mr_weight, 
+                                                        self.rp_weight, 
+                                                        "COLD"
+                                                        )
+                    self.f2_pop[self.gen].mutate_weight(self.mr_weight, 
+                                                        self.rp_weight, 
+                                                        "COLD"
+                                                        )
+            
+                    #Mutate weight
+                    self.f1_pop[self.gen].mutate_weight(self.mr_weight, 
+                                                        self.rp_weight, 
+                                                        "GAUSS"
+                                                        )
+                    self.f2_pop[self.gen].mutate_weight(self.mr_weight, 
+                                                        self.rp_weight, 
+                                                        "GAUSS"
+                                                        )
 
                     #Set genome counter to 0
                     self.gen = 0
@@ -296,64 +381,6 @@ class Neat(object):
                     #Increase genome counter
                     self.gen += 1
             
-            #If it is the iteration, evolve the genome
-            elif self.epoch == 1:
-                #Add Node to fighter 1
-                self.f1_innDict, self.f1_innNum = \
-                self.f1_pop[self.gen].add_node(self.ip_node, 
-                                               20, 
-                                               self.f1_innDict, 
-                                               self.f1_innNum
-                                               )
-                
-                #Add link to fighter 1
-                self.f1_innDict, self.f1_innNum = \
-                self.f1_pop[self.gen].add_link(self.ip_link,
-                                               self.ip_rlink, 
-                                               20, 
-                                               10, 
-                                               self.f1_innDict,
-                                               self.f1_innNum
-                                               )
-                
-                #Add Node to fighter 2
-                self.f2_innDict, self.f2_innNum = \
-                self.f2_pop[self.gen].add_node(self.ip_node, 
-                                               20, 
-                                               self.f2_innDict, 
-                                               self.f2_innNum
-                                               )
-                
-                #Add link to fighter 2
-                self.f2_innDict, self.f2_innNum = \
-                self.f2_pop[self.gen].add_link(self.ip_link,
-                                               self.ip_rlink,
-                                               20,
-                                               10,
-                                               self.f2_innDict,
-                                               self.f2_innNum
-                                               )
-                #Replace weight
-                self.f1_pop[self.gen].mutate_weight(self.mr_weight, 
-                                                    self.rp_weight, 
-                                                    "COLD"
-                                                    )
-                self.f2_pop[self.gen].mutate_weight(self.mr_weight, 
-                                                    self.rp_weight, 
-                                                    "COLD"
-                                                    )
-
-                #Mutate weight
-                self.f1_pop[self.gen].mutate_weight(self.mr_weight, 
-                                                    self.rp_weight, 
-                                                    "GAUSS"
-                                                    )
-                self.f2_pop[self.gen].mutate_weight(self.mr_weight, 
-                                                    self.rp_weight, 
-                                                    "GAUSS"
-                                                    )
-
-                self.epoch += 1
             #If nothing anomalistic happens, move to the next iteration
             else:
                 self.epoch += 1
@@ -381,13 +408,6 @@ class Neat(object):
             self.f1_pop[self.gen].update(self.f1.memory, "active")
             self.f2.commands = \
             self.f2_pop[self.gen].update(self.f2.memory, "active")
-            
-            #Check if there are any commands sent to the ships
-            if self.epoch == 1:
-                if sum(self.f1.commands) == 0: 
-                    self.f1_stale = True
-                if sum(self.f2.commands) == 0: 
-                    self.f2_stale = True
             
             #Translate the commands into actions for the ship
             for cnd in range(0, self.o):
@@ -437,7 +457,6 @@ class Neat(object):
                 off_x = int(fighter.x) - 0
                 off_y = int(fighter.y) - 0
             fighter.vel_x = -fighter.vel_x / 2
-            fighter.e_damage += 1
             edge = True
 
         #Right side        
@@ -454,7 +473,6 @@ class Neat(object):
                 off_x = int(fighter.x) - self.sc_w
                 off_y = int(fighter.y) - 0
             fighter.vel_x = -fighter.vel_x / 2
-            fighter.e_damage += 1
             edge = True
 
         #Top side        
@@ -471,7 +489,6 @@ class Neat(object):
                 off_x = int(fighter.x) - 0
                 off_y = int(fighter.y) - 0
             fighter.vel_y = -fighter.vel_y / 2
-            fighter.e_damage += 1
             edge = True
 
         #Bottom side        
@@ -488,7 +505,6 @@ class Neat(object):
                 off_x = int(fighter.x) - 0
                 off_y = int(fighter.y) - self.sc_h 
             fighter.vel_y = -fighter.vel_y / 2
-            fighter.e_damage += 1
             edge = True
         
         #if an adjustment has been made, recalculate the gun port and the mask
@@ -497,7 +513,10 @@ class Neat(object):
                                    fighter.y + fighter.r_center[1]]
             fighter.g_port()
             fighter.col_mask()
-        
+            fighter.e_damage += 10
+        else:
+            fighter.e_damage -= 0.125
+            
     #Calculate the new positions
     def iterate(self):
         #Clear screen with wallpaper
@@ -586,8 +605,8 @@ class Neat(object):
             fighter_2.vel_y = -fighter_2.vel_y / 2
             
             #Add damage
-            fighter_1.e_damage += 1
-            fighter_2.e_damage += 1
+            fighter_1.e_damage += 5
+            fighter_2.e_damage += 5
             
             #Move the fighters
             self.move(fighter_1)
@@ -655,4 +674,4 @@ class Neat(object):
                                                  obj.vel_y])
 
 if __name__ == "__main__":
-    fight = Neat(100)
+    fight = Neat(10)
