@@ -6,6 +6,7 @@ import shot as sh
 import neuralnet as nn
 import time
 import mcu
+import impexp as iop
 
 class Neat(object):
     #Define the color constants
@@ -14,14 +15,20 @@ class Neat(object):
     EXESS = 1 
     MATCHED = 0.4
     
-    def __init__(self, pop_size):
+    def __init__(self, pop_size, export = False):
         
+        #Create directory for save files
+        if export == True:
+            self.main = iop.IO.create_dir("F:/Code/AI/")
+        else:
+            self.main = None
+
         #Initialise the control variables
         self.running = True
         
         #Max epoch
         self.epoch = 0
-        self.max_epoch = 10
+        self.max_epoch = 20
         
         #Background
         self.space = self.bg()
@@ -71,7 +78,7 @@ class Neat(object):
         self.get_constants()
         self.collect_data(self.f1, self.f2)
         self.collect_data(self.f2, self.f2)
-        
+                
         #Initialize the Neat variables
         #Number of Inputs and Outputs
         self.i = len(self.f1.memory)
@@ -80,7 +87,11 @@ class Neat(object):
         #Innovation ID counter
         self.f1_innNum = 0
         self.f2_innNum = 0
-
+        
+        #NodeID
+        self.f1_nodeID = 0
+        self.f2_nodeID = 0
+        
         #Innovation Dictonary
         self.f1_innDict = dict()
         self.f2_innDict = dict()
@@ -93,11 +104,22 @@ class Neat(object):
         self.f1_specList = []
         self.f2_specList = []
         
+        #Species target
+        self.specTarget = 5
+
+        #Species compatibility
+        self.f1_th_comp = 0.26
+        self.f2_th_comp = 0.26
+        
         #Generation counter
         self.generation = 0
         
         #Genome counter
         self.gen = 0
+        
+        #Species counter
+        self.f1_species_count = 1
+        self.f2_species_count = 1
         
         #Population size
         self.n = pop_size
@@ -115,25 +137,34 @@ class Neat(object):
         self.crossover = 0.7
         
         #Species probabilities
-        self.th_compatibility = 0.26
         self.th_oldage = 50
         self.py_oldage = 0.7
         self.th_youth = 10
         self.bs_youth = 1.3
         
         #Create populations of NNs for both fighters
-        self.f1_pop, self.f1_innDict, self.f1_innNum = \
-        self.pop_init(self.i, self.o, self.f1_innDict, self.f1_innNum)
+        self.f1_pop, self.f1_innDict, self.f1_innNum, self.f1_nodeID = \
+        self.pop_init(self.i, 
+                      self.o, 
+                      self.f1_innDict, 
+                      self.f1_innNum, 
+                      self.f1_nodeID
+                      )
 
-        self.f2_pop, self.f2_innDict, self.f2_innNum = \
-        self.pop_init(self.i, self.o, self.f2_innDict, self.f2_innNum)
+        self.f2_pop, self.f2_innDict, self.f2_innNum, self.f2_nodeID = \
+        self.pop_init(self.i, 
+                      self.o, 
+                      self.f2_innDict, 
+                      self.f2_innNum, 
+                      self.f1_nodeID
+                      )
 
         #Run the engine
         self.engine()
         
     ### Neat functions ###
     #Initiate the population
-    def pop_init(self, i, o, innDict, innNum):
+    def pop_init(self, i, o, innDict, innNum, nodeID):
         #Population
         population = []
         
@@ -142,9 +173,10 @@ class Neat(object):
             
             #Create the Brain for the gen
             population.append(nn.Neuralnet(i, o))
-            innDict, innNum = population[pop].create_net(innDict, innNum)
+            innDict, innNum, nodeID = \
+            population[pop].create_net(innDict, innNum, nodeID)
             
-        return(population, innDict, innNum)
+        return population, innDict, innNum, nodeID 
     
     #Reset the game variables to default
     def reset(self):
@@ -207,7 +239,7 @@ class Neat(object):
         self.env.append(1)
         self.env.append(self.sc_h)
         self.env.append(self.sc_w)
-
+    
     #The conversion table for the fighters
     def conversion(self, fighter, y):
         if y == 1: fighter.vel_forward()
@@ -218,41 +250,50 @@ class Neat(object):
         if y == 6: fighter.turn_l()
         if y == 7: fighter.turn_r()
         if y == 8: self.shoot(fighter)
-    
+            
     #Display scores
     def status(self):
         #Number of epochs
         l_bluesc = self.fnt.render("Epoch: %d" % (self.epoch), 
                                    True, 
                                    (self.FONT))
-        self.screen.blit(l_bluesc, (20, self.sc_h - 180))
+        self.screen.blit(l_bluesc, (20, self.sc_h - 140))
         
         #Fitness Score for the Blus ship
         l_bluesc = self.fnt.render("Blue fitness: %d" % \
-                                   (self.f1.fitness("defensive")), 
+                                   (self.f1.fitness("normal")), 
                                    True, 
                                    (self.FONT))
-        self.screen.blit(l_bluesc, (20, self.sc_h - 160))
+        self.screen.blit(l_bluesc, (20, self.sc_h - 120))
 
         #Fitness Score for the Red ship
         l_redesc = self.fnt.render("Red fitness: %d" % \
-                                   (self.f2.fitness("agressive")), 
+                                   (self.f2.fitness("normal")), 
                                    True, 
                                    (self.FONT))
-        self.screen.blit(l_redesc, (20, self.sc_h - 140))
+        self.screen.blit(l_redesc, (20, self.sc_h - 100))
 
         #Current generation 
         l_curgen = self.fnt.render("Current generation: %d" % \
                                    (self.generation + 1), 
                                    True, 
                                    (self.FONT))
-        self.screen.blit(l_curgen, (20, self.sc_h - 120))
+        self.screen.blit(l_curgen, (20, self.sc_h - 80))
         
         #Current genome
         l_curgnom = self.fnt.render("Current genome: %d" % (self.gen + 1), 
                                    True, 
                                    (self.FONT))
-        self.screen.blit(l_curgnom,(20, self.sc_h - 100))
+        self.screen.blit(l_curgnom,(20, self.sc_h - 60))
+        
+    #Adjust the threshold for speciation
+    def adjust_threshold(self, specList, specTh, specTarget):
+        if (len(specList) + 1) > specTarget:
+            specTh += 0.03
+        elif (len(specList) + 1) < specTarget and specTh > 0.3:
+            specTh -= 0.03
+            
+        return specTh
     
     ### Engine ###
     #Engine
@@ -262,18 +303,14 @@ class Neat(object):
             #and load the next neural network
             if self.epoch == self.max_epoch:
                 #Get fitness scores
-                self.f1_pop[self.gen].r_fitness = self.f1.fitness("defensive")
-                self.f2_pop[self.gen].r_fitness = self.f2.fitness("agressive")
-                            
+                self.f1_pop[self.gen].r_fitness = self.f1.fitness("normal")      
+                self.f2_pop[self.gen].r_fitness = self.f2.fitness("normal")
+            
                 #Reset the game objects
                 self.reset()
                 
                 #Zero the epoch
                 self.epoch = 0
-                
-                #Reset the stale variable
-                self.f1_stale = False
-                self.f2_stale = False
                 
                 #Check if we reached the last genome, do crossover
                 if self.gen == (self.n - 1):
@@ -303,80 +340,118 @@ class Neat(object):
                                             self.f2_specDict, 
                                             self.f2_specList
                                             )
-                    
+
                     #Evolve the new generation of genomes
-                    self.f1_pop = mcu.evolution.spawn(self.f1_pop,
-                                                      self.f1_specDict, 
-                                                      self.f1_specList,
-                                                      self.th_compatibility
-                                                      )
+                    self.f1_pop, self.f1_species_count = \
+                    mcu.evolution.spawn(self.f1_pop,
+                                        self.f1_specDict, 
+                                        self.f1_specList,
+                                        self.f1_th_comp,
+                                        self.f1_species_count
+                                        )
                     
-                    self.f2_pop = mcu.evolution.spawn(self.f2_pop,
-                                                      self.f2_specDict, 
-                                                      self.f2_specList,
-                                                      self.th_compatibility
-                                                      )
+                    self.f2_pop, self.f2_species_count = \
+                    mcu.evolution.spawn(self.f2_pop,
+                                        self.f2_specDict, 
+                                        self.f2_specList,
+                                        self.f2_th_comp,
+                                        self.f2_species_count
+                                        )
                     
-                    #Add Node to fighter 1
-                    self.f1_innDict, self.f1_innNum = \
-                    self.f1_pop[self.gen].add_node(self.ip_node, 
-                                                   20, 
-                                                   self.f1_innDict, 
-                                                   self.f1_innNum
-                                                   )
-                    
-                    #Add link to fighter 1
-                    self.f1_innDict, self.f1_innNum = \
-                    self.f1_pop[self.gen].add_link(self.ip_link,
-                                                   self.ip_rlink, 
-                                                   20, 
-                                                   10, 
-                                                   self.f1_innDict,
-                                                   self.f1_innNum
-                                                   )
-                    
-                    #Add Node to fighter 2
-                    self.f2_innDict, self.f2_innNum = \
-                    self.f2_pop[self.gen].add_node(self.ip_node, 
-                                                   20, 
-                                                   self.f2_innDict, 
-                                                   self.f2_innNum
-                                                   )
-                    
-                    #Add link to fighter 2
-                    self.f2_innDict, self.f2_innNum = \
-                    self.f2_pop[self.gen].add_link(self.ip_link,
-                                                   self.ip_rlink,
-                                                   20,
-                                                   10,
-                                                   self.f2_innDict,
-                                                   self.f2_innNum
-                                                   )
-                    #Replace weight
-                    self.f1_pop[self.gen].mutate_weight(self.mr_weight, 
-                                                        self.rp_weight, 
-                                                        "COLD"
-                                                        )
-                    self.f2_pop[self.gen].mutate_weight(self.mr_weight, 
-                                                        self.rp_weight, 
-                                                        "COLD"
-                                                        )
-            
-                    #Mutate weight
-                    self.f1_pop[self.gen].mutate_weight(self.mr_weight, 
-                                                        self.rp_weight, 
-                                                        "GAUSS"
-                                                        )
-                    self.f2_pop[self.gen].mutate_weight(self.mr_weight, 
-                                                        self.rp_weight, 
-                                                        "GAUSS"
-                                                        )
+                    for member in range(len(self.f1_pop)):                        
+                        #Add Node to fighter 1
+                        self.f1_innDict, self.f1_innNum, self.f1_nodeID = \
+                        self.f1_pop[member].add_node(self.ip_node, 
+                                                     50, 
+                                                     self.f1_innDict, 
+                                                     self.f1_innNum,
+                                                     self.f1_nodeID
+                                                     )
+
+                        #Add Node to fighter 2
+                        self.f2_innDict, self.f2_innNum, self.f2_nodeID = \
+                        self.f2_pop[member].add_node(self.ip_node, 
+                                                     50, 
+                                                     self.f2_innDict, 
+                                                     self.f2_innNum,
+                                                     self.f2_nodeID                                                       
+                                                     )
+
+                        #Add link to fighter 1
+                        self.f1_innDict, self.f1_innNum = \
+                        self.f1_pop[member].add_link(self.ip_link,
+                                                     self.ip_rlink, 
+                                                     50, 
+                                                     25, 
+                                                     self.f1_innDict,
+                                                     self.f1_innNum
+                                                     )
+
+                        #Add link to fighter 2
+                        self.f2_innDict, self.f2_innNum = \
+                        self.f2_pop[member].add_link(self.ip_link,
+                                                     self.ip_rlink,
+                                                     50,
+                                                     25,
+                                                     self.f2_innDict,
+                                                     self.f2_innNum
+                                                     )
+
+                        #Replace weight
+                        self.f1_pop[member].mutate_weight(self.mr_weight, 
+                                                            self.rp_weight, 
+                                                            "COLD"
+                                                            )
+                        self.f2_pop[member].mutate_weight(self.mr_weight, 
+                                                            self.rp_weight, 
+                                                            "COLD"
+                                                            )
+                
+
+                        #Mutate weight
+                        self.f1_pop[member].mutate_weight(self.mr_weight, 
+                                                            self.rp_weight, 
+                                                            "GAUSS"
+                                                            )
+                        self.f2_pop[member].mutate_weight(self.mr_weight, 
+                                                            self.rp_weight, 
+                                                            "GAUSS"
+                                                            )
+                        
+                    #Adjust species threshold
+                    self.f1_th_comp = self.adjust_threshold(self.f1_specList, 
+                                                            self.f1_th_comp,
+                                                            self.specTarget
+                                                            )
+
+                    self.f2_th_comp = self.adjust_threshold(self.f2_specList, 
+                                                            self.f2_th_comp,
+                                                            self.specTarget
+                                                            )
 
                     #Set genome counter to 0
                     self.gen = 0
 
                     #Increment generation
                     self.generation += 1
+
+                    #Export f1 & f2
+                    if self.main != None:
+                        iop.IO.exp(self.main, 
+                                   "f1", 
+                                   str(self.generation), 
+                                   self.f1_innDict,
+                                   self.f1_pop,
+                                   self.f1_specList
+                                   )
+                        iop.IO.exp(self.main, 
+                                   "f2", 
+                                   str(self.generation), 
+                                   self.f2_innDict, 
+                                   self.f2_pop,
+                                   self.f2_specList
+                                   )
+                    
                 else:
                     #Increase genome counter
                     self.gen += 1
@@ -582,10 +657,12 @@ class Neat(object):
         #Collision check
         if st.mask.overlap(fighter_1.mask, (off_x, off_y)) != None:
             
-            #Delete the shot and add damage
+            #Delete the shot
             self.shots.pop(ind).__del__
-            fighter_1.p_damage += 1
-            fighter_2.score += 1
+            
+            #Add damage and score
+            fighter_1.p_damage += int(self.max_epoch / 4)
+            fighter_2.score += int(self.max_epoch / 4)
         
         return fighter_1, fighter_2
         
@@ -605,8 +682,8 @@ class Neat(object):
             fighter_2.vel_y = -fighter_2.vel_y / 2
             
             #Add damage
-            fighter_1.e_damage += 5
-            fighter_2.e_damage += 5
+            fighter_1.e_damage += 10
+            fighter_2.e_damage += 10
             
             #Move the fighters
             self.move(fighter_1)
@@ -657,7 +734,7 @@ class Neat(object):
                 obj.pos_y <= 0 or \
                 obj.pos_y >= self.sc_h:
                     self.shots.pop(ind).__del__
-                    
+                
                 #Else, append the data to the fighter incoming table
                 elif obj.incoming == True:
                     if obj.id == 0:
@@ -674,4 +751,4 @@ class Neat(object):
                                                  obj.vel_y])
 
 if __name__ == "__main__":
-    fight = Neat(10)
+    fight = Neat(20, export = True)

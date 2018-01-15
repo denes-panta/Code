@@ -23,9 +23,6 @@ class Node(object):
         #Recurrent or not
         self.recurr = rec
         
-        #Activation curvature
-        self.act = np.random.rand(0, 1)
-        
         #Position in the nework grid
         self.splitX = None
         
@@ -35,19 +32,36 @@ class Node(object):
             self.splitY = 1
         
         #Links into the neuron
-        self.i_links = []
+        self.i_links = dict()
         
         #Links out of the neuron
-        self.o_links = []
-      
+        self.o_links = dict()
     
+    def set_vars(self, spY, val):
+        # Y Coordinate
+        self.splitY = spY
+
+        # Value
+        self.value = val
+
+    def get_varaibles(self):
+        variables = list()
+        variables.append(self.innID)
+        variables.append(self.nodeID)
+        variables.append(self.s_type)
+        variables.append(self.n_type)
+        variables.append(self.value)
+        variables.append(self.rec)
+        variables.append(self.splitY)
+        variables.append(self.i_links)
+        variables.append(self.o_links)
+        
+        return variables
+        
 class Link(object):
-    def __init__(self, innID, linkID, inp, out, rec):
+    def __init__(self, innID, inp, out, rec):
         #Innovation ID
         self.innID = innID
-        
-        #Link ID
-        self.linkID = linkID
         
         #Structure type
         self.s_type = "link"
@@ -66,15 +80,32 @@ class Link(object):
         
         #Recurrent or not
         self.recurr = rec
+
+    def set_vars(self, wght, enab):
+        # Y Coordinate
+        self.w = wght
+
+        # Value
+        self.enabled = enab
         
+    def get_varaibles(self):
+        variables = list()
+        variables.append(self.innID)
+        variables.append(None)
+        variables.append(self.s_type)
+        variables.append(self.n_type)
+        variables.append(self.value)
+        variables.append(self.rec)
+        variables.append(self.splitY)
+        variables.append(self.i_links)
+        variables.append(self.o_links)
         
+        return variables
+
 class Species(object):
     def __init__(self):
         #Species number
         self.specNum = None
-        
-        #Alive or Dead
-        self.alive = True
         
         #Paragon of the species
         self.leader = None
@@ -97,3 +128,7 @@ class Species(object):
         #List of genomes and scores of the species
         #Structure: [[genes, adj fitness score]]
         self.adjScore = []
+    
+    def __del__(self):
+        pass
+    
