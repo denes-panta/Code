@@ -198,6 +198,7 @@ class Neuralnet(object):
     #Add link
     def add_link(self, mutaProb, loopProb, numLoopTry,
                  numLinkTry, innDict, innNum):
+        
         #Check for mutation probability
         if np.random.random() <= mutaProb:        
 
@@ -274,7 +275,7 @@ class Neuralnet(object):
             if found == False:                
                 return innDict, innNum
             elif found == True:         
-                
+           
                 #Check to see if the innovation has already been discovered
                 innID = self.get_innovation("link", innDict, n_1, n_2)
                 
@@ -284,14 +285,14 @@ class Neuralnet(object):
                     innID = innNum
                 else:
                     innov = False
-                
+            
                 #Create new link
                 innDict, innNum = \
                 self.create_link(n_1, n_2, innDict, innID, rec, innov)
                 self.nodeDict[n_1].o_links[innNum] = innNum
                 self.nodeDict[n_2].i_links[innNum] = innNum
-            
-            return innDict, innNum
+        
+        return innDict, innNum
     
     #Add node
     def add_node(self, mutaProb, numOldLink, innDict, innNum, nodeID):    
@@ -493,19 +494,6 @@ class Neuralnet(object):
                     #Get the links leading into the node
                     for ind, link in enumerate(list(self.nodeDict[node].i_links.keys())):
                         #Check if the link is enabled
-#                        try:
-#                            self.linkDict[link].enabled
-#                        except:
-#                            print("----------Error------------")
-#                            print(self.nodeDict)
-#                            print()
-#                            print(self.linkDict)
-#                            print()
-#                            for ind, node in enumerate(self.nodeDict):
-#                                print(self.nodeDict[node].innID, self.nodeDict[node].n_type, "inp: ", self.nodeDict[node].i_links.keys())
-#                                print(self.nodeDict[node].innID, self.nodeDict[node].n_type, "out: ", self.nodeDict[node].o_links.keys())
-#                            print("----------Error------------")
-
                         if self.linkDict[link].enabled == True:
                             #Take the weight of each link and multiply it with the
                             #connected node's value

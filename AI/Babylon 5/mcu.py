@@ -5,6 +5,8 @@ import neuralnet
 from operator import itemgetter
 
 class evolution(object):
+    
+    #Spawn new genomes
     def spawn(pop, specDict, specList, sameSpecies, specCount):
         #Threshold to assign genomes into the same species
         threshold = sameSpecies
@@ -345,7 +347,20 @@ class evolution(object):
             if best.get(key, None) != None:
                 #If the structure is a link
                 if best[key].s_type == "link":
-                    #If the link exists in both genomes
+                    #Pick the best                
+                    origin = best[key]
+
+                    #Assign the link or node to the appropriate child dictionary         
+                    ch_linkDict[origin.innID] = p.Link(origin.innID,
+                                                       origin.inp_n,
+                                                       origin.out_n,
+                                                       origin.recurr
+                                                       )
+                    ch_linkDict[origin.innID].set_vars(origin.w,
+                                                       origin.enabled
+                                                       )
+
+                    #Set enabled to random if the link exists in both
                     if best.get(key, None) != None and \
                     worst.get(key, None) != None:
                         #If the link is enabled in one, disabled in the other
@@ -358,25 +373,10 @@ class evolution(object):
                             pick = np.random.randint(0, 2)
                             
                             if pick == 0:
-                                origin = best[key]
+                                ch_linkDict[origin.innID].enabled = True
                             elif pick == 1:
-                                origin = worst[key]
+                                ch_linkDict[origin.innID].enabled = False
                                 
-                        #if not, pick the best genome
-                        else:
-                            #Pick the best                
-                            origin = best[key]
-
-                        #Assign the link or node to the appropriate child dictionary         
-                        ch_linkDict[origin.innID] = p.Link(origin.innID,
-                                                           origin.inp_n,
-                                                           origin.out_n,
-                                                           origin.recurr
-                                                           )
-                        ch_linkDict[origin.innID].set_vars(origin.w,
-                                                           origin.enabled
-                                                           )
- 
                 elif best[key].s_type == "node":
                     #Pick the best                
                     origin = best[key]

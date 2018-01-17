@@ -15,7 +15,7 @@ class Neat(object):
     EXESS = 1 
     MATCHED = 0.4
     
-    def __init__(self, pop_size, export = False):
+    def __init__(self, pop_size, export = False, imp_path = False):
         
         #Create directory for save files
         if export == True:
@@ -28,7 +28,7 @@ class Neat(object):
         
         #Max epoch
         self.epoch = 0
-        self.max_epoch = 20
+        self.max_epoch = 60
         
         #Background
         self.space = self.bg()
@@ -129,41 +129,45 @@ class Neat(object):
         self.rp_weight = 0.1
         
         #Innovation probability
-        self.ip_node = 1
-        self.ip_link = 1
-        self.ip_rlink = 0.5
-        
-        #Crossover rate
-        self.crossover = 0.7
-        
+        self.ip_node = 0.03
+        self.ip_link = 0.07
+        self.ip_rlink = 0.05
+
         #Species probabilities
         self.th_oldage = 50
         self.py_oldage = 0.7
         self.th_youth = 10
         self.bs_youth = 1.3
         
-        #Create populations of NNs for both fighters
-        self.f1_pop, self.f1_innDict, self.f1_innNum, self.f1_nodeID = \
-        self.pop_init(self.i, 
-                      self.o, 
-                      self.f1_innDict, 
-                      self.f1_innNum, 
-                      self.f1_nodeID
-                      )
-
-        self.f2_pop, self.f2_innDict, self.f2_innNum, self.f2_nodeID = \
-        self.pop_init(self.i, 
-                      self.o, 
-                      self.f2_innDict, 
-                      self.f2_innNum, 
-                      self.f1_nodeID
-                      )
+        if imp_path == False:
+            #Create populations of NNs for both fighters
+            self.f1_pop, self.f1_innDict, self.f1_innNum, self.f1_nodeID = \
+            self.pop_init(self.i, 
+                          self.o, 
+                          self.f1_innDict, 
+                          self.f1_innNum, 
+                          self.f1_nodeID
+                          )
+    
+            self.f2_pop, self.f2_innDict, self.f2_innNum, self.f2_nodeID = \
+            self.pop_init(self.i, 
+                          self.o, 
+                          self.f2_innDict, 
+                          self.f2_innNum, 
+                          self.f1_nodeID
+                          )
+        else:
+            self.f1_pop, self.f1_innDict, self.f1_innNum, self.f1_nodeID = \
+            iop.IO.imp(imp_path, self.n, "f1", self.i, self.o)
+            self.f2_pop, self.f2_innDict, self.f2_innNum, self.f2_nodeID = \
+            iop.IO.imp(imp_path, self.n, "f2", self.i, self.o)
 
         #Run the engine
         self.engine()
         
     ### Neat functions ###
     #Initiate the population
+
     def pop_init(self, i, o, innDict, innNum, nodeID):
         #Population
         population = []
@@ -417,7 +421,7 @@ class Neat(object):
                                                             self.rp_weight, 
                                                             "GAUSS"
                                                             )
-                        
+
                     #Adjust species threshold
                     self.f1_th_comp = self.adjust_threshold(self.f1_specList, 
                                                             self.f1_th_comp,
@@ -751,4 +755,7 @@ class Neat(object):
                                                  obj.vel_y])
 
 if __name__ == "__main__":
-    fight = Neat(20, export = True)
+    fight = Neat(100, 
+                 export = True 
+#                 imp_path = "F:/Code/AI/2018-01-15_15-39-55/15"
+                 )
