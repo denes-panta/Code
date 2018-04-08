@@ -56,13 +56,13 @@ class Neat(object):
         self.horizontal.fill()
         
         #Create the fighters and fighter variables
-        self.f1 = f.Sa23e(100, 
-                          int(self.sc_h / 2),
+        self.f1 = f.Sa23e(int(self.sc_w / 2), 
+                          int(self.sc_h / 2) + 200,
                           "starfury1.png",
                           "left"
                           )    
-        self.f2 = f.Sa23e(1700, 
-                          int(self.sc_h / 2),
+        self.f2 = f.Sa23e(int(self.sc_w / 2), 
+                          int(self.sc_h / 2) - 200,
                           "starfury2.png",
                           "right"
                           )
@@ -105,7 +105,7 @@ class Neat(object):
         self.f2_specList = []
         
         #Species target
-        self.specTarget = 5
+        self.specTarget = 10
 
         #Species compatibility
         self.f1_th_comp = 0.26
@@ -144,7 +144,8 @@ class Neat(object):
             self.f1_pop, self.f1_innDict, self.f1_innNum, self.f1_nodeID = \
             self.pop_init(self.i, 
                           self.o, 
-                          self.f1_innDict, 
+            
+              self.f1_innDict, 
                           self.f1_innNum, 
                           self.f1_nodeID
                           )
@@ -157,9 +158,11 @@ class Neat(object):
                           self.f1_nodeID
                           )
         else:
-            self.f1_pop, self.f1_innDict, self.f1_innNum, self.f1_nodeID = \
+            self.f1_pop, self.f1_innDict, self.f1_innNum, self.f1_nodeID, \
+            self.f1_specList, self.f1_species_count = \
             iop.IO.imp(imp_path, self.n, "f1", self.i, self.o)
-            self.f2_pop, self.f2_innDict, self.f2_innNum, self.f2_nodeID = \
+            self.f2_pop, self.f2_innDict, self.f2_innNum, self.f2_nodeID, \
+            self.f2_specList, self.f2_species_count = \
             iop.IO.imp(imp_path, self.n, "f2", self.i, self.o)
 
         #Run the engine
@@ -167,7 +170,6 @@ class Neat(object):
         
     ### Neat functions ###
     #Initiate the population
-
     def pop_init(self, i, o, innDict, innNum, nodeID):
         #Population
         population = []
@@ -192,22 +194,25 @@ class Neat(object):
         f.Sa23e.counter_null(self)
         
         #Create the new instances for the fighters
-        self.f1 = f.Sa23e(100, 
-                          int(self.sc_h / 2),
+        self.f1 = f.Sa23e(int(self.sc_w / 2), 
+                          int(self.sc_h / 2) + 200,
                           "starfury1.png",
                           "left"
                           )
-        self.f2 = f.Sa23e(1700, 
-                          int(self.sc_h / 2),
+        self.f2 = f.Sa23e(int(self.sc_w / 2), 
+                          int(self.sc_h / 2) - 200,
                           "starfury2.png",
                           "right"
                           )      
 
         #Clear shots
-        for ind, obj in enumerate(self.shots):
-            self.shots.pop(ind).__del__
-        self.shots.clear()
-            
+        try:
+            for ind, obj in enumerate(self.shots):
+                self.shots.pop(ind).__del__
+                self.shots.clear()
+        except:
+            pass
+        
     #Collect the input data for each ship
     def collect_data(self, own, opp):
         own.memory = []
@@ -253,7 +258,9 @@ class Neat(object):
         if y == 5: fighter.stand()
         if y == 6: fighter.turn_l()
         if y == 7: fighter.turn_r()
-        if y == 8: self.shoot(fighter)
+        if y == 8: 
+            self.shoot(fighter)
+            fighter.weapon_fired = True
             
     #Display scores
     def status(self):
@@ -306,10 +313,18 @@ class Neat(object):
             #Once X iterations have passed, reset to beginning
             #and load the next neural network
             if self.epoch == self.max_epoch:
+
                 #Get fitness scores
-                self.f1_pop[self.gen].r_fitness = self.f1.fitness("normal")      
-                self.f2_pop[self.gen].r_fitness = self.f2.fitness("normal")
-            
+                if self.f1.weapon_fired == True:
+                    self.f1_pop[self.gen].r_fitness = self.f1.fitness("normal")      
+                else:
+                    self.f1_pop[self.gen].r_fitness = 0
+                
+                if self.f2.weapon_fired == True:
+                    self.f2_pop[self.gen].r_fitness = self.f2.fitness("normal")
+                else:
+                    self.f2_pop[self.gen].r_fitness = 0
+                
                 #Reset the game objects
                 self.reset()
                 
@@ -411,7 +426,6 @@ class Neat(object):
                                                             "COLD"
                                                             )
                 
-
                         #Mutate weight
                         self.f1_pop[member].mutate_weight(self.mr_weight, 
                                                             self.rp_weight, 
@@ -592,7 +606,7 @@ class Neat(object):
                                    fighter.y + fighter.r_center[1]]
             fighter.g_port()
             fighter.col_mask()
-            fighter.e_damage += 10
+            fighter.e_damage += 5
         else:
             fighter.e_damage -= 0.125
             
@@ -665,8 +679,8 @@ class Neat(object):
             self.shots.pop(ind).__del__
             
             #Add damage and score
-            fighter_1.p_damage += int(self.max_epoch / 4)
-            fighter_2.score += int(self.max_epoch / 4)
+            fighter_1.p_damage += int(self.max_epoch)
+            fighter_2.score += int(self.max_epoch)
         
         return fighter_1, fighter_2
         
@@ -737,8 +751,10 @@ class Neat(object):
                 obj.pos_x >= self.sc_w or \
                 obj.pos_y <= 0 or \
                 obj.pos_y >= self.sc_h:
-                    self.shots.pop(ind).__del__
-                
+                    try:
+                        self.shots.pop(ind).__del__
+                    except:
+                        pass
                 #Else, append the data to the fighter incoming table
                 elif obj.incoming == True:
                     if obj.id == 0:
@@ -756,6 +772,6 @@ class Neat(object):
 
 if __name__ == "__main__":
     fight = Neat(100, 
-                 export = True 
-#                 imp_path = "F:/Code/AI/2018-01-15_15-39-55/15"
+                 export = True
+#                 imp_path = "F:/Code/AI/2018-01-19_13-05-57/34"
                  )

@@ -39,8 +39,10 @@ class IO(object):
                     nID = innovDict[innov].nodeID
 
         #Number of genome leaders saved
-        n = int((len(os.listdir(imp_path)) - 1) / 2)
-        
+        specNum = len(os.listdir(imp_path))
+        specList = []
+        n = int((specNum - 1) / 2)
+
         #Number of genomes to be created by
         n_gen = int(math.floor(pop_length / n))
 
@@ -50,9 +52,17 @@ class IO(object):
             i_linkDict = pl.load(open(imp_path + "/link_Dict" + str(lead), "rb" ))
             i_nodeDict = pl.load(open(imp_path + "/node_Dict" + str(lead), "rb" ))
 
+            #Append speclist
+            specList.append(lead + 1)
+                        
             for gen in range(n_gen):
+                #Create new genome
                 genome = nn.Neuralnet(i, o)
 
+                #Assign species number
+                genome.species = lead + 1
+                
+                #Create link dictionary
                 for ind, l_ID in enumerate(i_linkDict):
                     link = i_linkDict[l_ID]
 
@@ -64,7 +74,8 @@ class IO(object):
                     genome.linkDict[l_ID].set_vars(link.w,
                                                    link.enabled
                                                    )
-    
+                
+                #Create node dictionary
                 for ind, n_ID in enumerate(i_nodeDict):
                     node = i_nodeDict[n_ID]
                     genome.nodeDict[n_ID] = p.Node(node.innID,
@@ -87,12 +98,17 @@ class IO(object):
             #Get random leader
             lead = np.random.randint(low = 0, high = n)
             
+            #Create new genome
+            genome = nn.Neuralnet(i, o)
+
+            #Assign species number
+            genome.species = lead
+
             #Get linkDict and nodeDict
             i_linkDict = pl.load(open(imp_path + "/link_Dict" + str(lead), "rb" ))
             i_nodeDict = pl.load(open(imp_path + "/node_Dict" + str(lead), "rb" ))
 
-            genome = nn.Neuralnet(i, o)
-
+            #Create link dictionary
             for ind, l_ID in enumerate(i_linkDict):
                 link = i_linkDict[l_ID]
 
@@ -104,7 +120,8 @@ class IO(object):
                 genome.linkDict[l_ID].set_vars(link.w,
                                                link.enabled
                                                )
-
+                
+            #Create node dictionary
             for ind, n_ID in enumerate(i_nodeDict):
                 node = i_nodeDict[n_ID]
                 genome.nodeDict[n_ID] = p.Node(node.innID,
@@ -121,7 +138,7 @@ class IO(object):
             
             population.append(genome)
 
-        return population, innovDict, innovNum, nID
+        return population, innovDict, innovNum, nID, specList, specNum
     
     #Export the generations
     def exp(path, name, generation, innDict, pop, specList):

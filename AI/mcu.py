@@ -180,16 +180,11 @@ class evolution(object):
     def get_cards(pop, specDict, specList):
         #Sum of the fitness score for the population
         fit_sum = 0
-        
-        #Dictionary for the species data
-        for ind, species in enumerate(specList):
-            specDict[species].adjScore.clear()
-            specDict[species].spawn = 0
-            specDict[species].number = 0
-            
+                    
         #Clear the species list
         specList.clear()
-
+        specDict.clear()
+        
         for ind, genome in enumerate(pop):
             #Append the active species list with the species number
             if genome.species not in specList:
@@ -294,7 +289,6 @@ class evolution(object):
     
     #Crossover function
     def crossover(p1, p2):
-
         #Get the length of the two genes
         p1_genes = len(p1.linkDict) + len(p1.nodeDict)
         p2_genes = len(p2.linkDict) + len(p2.nodeDict)
@@ -363,6 +357,16 @@ class evolution(object):
                     #Set enabled to random if the link exists in both
                     if best.get(key, None) != None and \
                     worst.get(key, None) != None:
+
+                        #Pick one at random
+                        pick = np.random.randint(0, 2)
+                        
+                        if pick == 0:
+                            ch_linkDict[origin.innID].w = best[key].w
+
+                        elif pick == 1:
+                            ch_linkDict[origin.innID].w = worst[key].w
+
                         #If the link is enabled in one, disabled in the other
                         if (best[key].enabled == True and \
                         worst[key].enabled == False) or \
@@ -373,7 +377,8 @@ class evolution(object):
                             pick = np.random.randint(0, 2)
                             
                             if pick == 0:
-                                ch_linkDict[origin.innID].enabled = True
+                                ch_linkDict[origin.innID].w = origin.w
+
                             elif pick == 1:
                                 ch_linkDict[origin.innID].enabled = False
                                 

@@ -59,6 +59,7 @@ class Sa23e(object):
         #Gun status
         self.gun_cdown = 0
         self.cdown_rate = 0.5
+        self.weapon_fired = False
         
         #Score & Damage
         self.score = 0
