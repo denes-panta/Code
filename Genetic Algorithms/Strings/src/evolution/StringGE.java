@@ -248,7 +248,7 @@ public class StringGE{
 		labelGenerationText.setForeground(Color.BLACK);
 		labelGenerationText.setHorizontalAlignment(JLabel.LEFT);
 		
-		labelGeneration.setBounds(300, 60, 200, 50);
+		labelGeneration.setBounds(310, 65, 200, 50);
 		labelGeneration.setFont(new Font("Tahoma", Font.PLAIN, 12));
 		labelGeneration.setForeground(Color.BLACK);
 		labelGeneration.setHorizontalAlignment(JLabel.LEFT);
@@ -346,7 +346,7 @@ public class StringGE{
 	}
 
 	//Print final assessment of the evolution on the GUI
-	private void result() {
+	private void displayResult() {
 		String sInfo = (
 		"<html>" + "Population size: " + iPop + "<br>" +
 		"Speciment size: " + iProtoScore + "<br>" +
@@ -356,7 +356,7 @@ public class StringGE{
 	}
 	
 	//Print the top 20 genomes on the GUI
-	private void top() {
+	private void printTop() {
 		for (int t=1; t<=20; t++) {
 			String sGenome = caGenome.get(t).getDNA();
 			char[] cGenomeDNA = sGenome.toCharArray();
@@ -369,7 +369,7 @@ public class StringGE{
 	}
 	
 	//Engine for the program
-	public void engine() {
+	public void runEngine() {
 		while (caGenome.get(0).getDNA().equals(sProto) == false) {
 			iGen += 1;
 
@@ -385,7 +385,7 @@ public class StringGE{
 					public void run() {
 						setGeneration(Integer.toString(iGen));
 						setParagon(sParagon);
-						top();						
+						printTop();						
 					}
 				});
 			}
@@ -395,7 +395,7 @@ public class StringGE{
 			
 			@Override
 			public void run() {
-				result();
+				displayResult();
 			}
 		});
 	}
@@ -430,15 +430,24 @@ public class StringGE{
 	    //Generate initial population
 	    this.caGenome = calcBackEnd.generatePopulation(this.caGenome, this.iPop, this.iProtoScore);    
 		
+	    //Print generation number
+	    setGeneration("0");
+	    
+	    //Print initial top 20 genomes
+	    printTop();
+	    
+	    //Print intitial paragon
+	    setParagon(caGenome.get(0).getDNA());
+	    
 		//Action listener for the Start button
-		buttonStart.addActionListener(new ActionListener(){
+	    buttonStart.addActionListener(new ActionListener(){
 		    public void actionPerformed(ActionEvent e)
 		    {
 				new SwingWorker<Object, Object>() {
 					
 					@Override
 					protected Object doInBackground() throws Exception{
-						engine();
+						runEngine();
 						return null;
 					}
 				}.execute();
