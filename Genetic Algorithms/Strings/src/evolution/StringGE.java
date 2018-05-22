@@ -2,6 +2,8 @@ package evolution;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.Color;
+import java.awt.Font;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -71,6 +73,16 @@ class Calculations {
 		return dFitness;
 	}
 	
+	protected int getGenomeScore(int iProtoScore, char[] cProto, char[] cGenome) {
+		int iScore = 0;
+		for (int j=0; j<iProtoScore; j++) { 
+			if (cProto[j] == cGenome[j]){
+				iScore += 1; 
+			}
+		}
+		return iScore;
+	}
+	
 	//Method for calculating the fitness scores
 	protected ArrayList<Genome> calculateScores(int iPop, int iProtoScore, String sProto, ArrayList<Genome> caGenome) {
 		// iPop <- population size
@@ -87,14 +99,10 @@ class Calculations {
 		for (int i=0; i<iPop; i++) {
 			iScore = 0;
 			char cGenome[] = caGenome.get(i).getDNA().toCharArray();
-
-			for (int j=0; j<iProtoScore; j++) { 
-				if (cProto[j] == cGenome[j]){
-					iScore += 1; 
-				}
-			}
-
-			caGenome.get(i).setScore(formula(iScore, 2));
+			
+			iScore = getGenomeScore(iProtoScore, cProto, cGenome);
+			
+			caGenome.get(i).setScore(formula(iScore, 3));
 			dSumScore += caGenome.get(i).getScore();
 		}
 
@@ -191,12 +199,12 @@ public class StringGE{
 	
 	//Create labels
 	private JLabel labelParagon = new JLabel("");
-	private JLabel labelParagonText = new JLabel("Paragon:");
+	private JLabel labelParagonText = new JLabel("Paragon");
 	private JLabel labelGeneration = new JLabel("");
-	private JLabel labelGenerationText = new JLabel("Current Generation:");
-	private JLabel labelInfoText = new JLabel("Information:");
+	private JLabel labelGenerationText = new JLabel("Current generation");
+	private JLabel labelInfoText = new JLabel("Information");
 	private JLabel labelInfo = new JLabel("");
-	private JLabel labelTopText = new JLabel("Top 20 Genomes");
+	private JLabel labelTopText = new JLabel("Top 20 genomes");
 	private JLabel[] laTop = new JLabel[iTop];
 	
 	//Set starting parameters of JFrame
@@ -207,6 +215,8 @@ public class StringGE{
 		frameGui.setVisible(true);
 		frameGui.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frameGui.setLayout(null);
+		frameGui.getContentPane().setBackground(Color.WHITE);
+
 	}		
 	
 	//Set the parameters of the panels
@@ -214,16 +224,43 @@ public class StringGE{
 		buttonStart.setBounds(50, 50, 150, 50);
 		
 		labelParagonText.setBounds(50, 120, 200, 50);
+		labelParagonText.setFont(new Font("Tahoma", Font.BOLD, 14));
+		labelParagonText.setForeground(Color.BLACK);
+		labelParagonText.setHorizontalAlignment(JLabel.LEFT);
+		
 		labelParagon.setBounds(50, 150, 300, 50);
+		labelParagon.setFont(new Font("Tahoma", Font.PLAIN, 12));
+		labelParagon.setForeground(Color.BLACK);
+		labelParagon.setHorizontalAlignment(JLabel.LEFT);
 		
 		labelInfoText.setBounds(50, 220, 200, 50);
+		labelInfoText.setFont(new Font("Tahoma", Font.BOLD, 14));
+		labelInfoText.setForeground(Color.BLACK);
+		labelInfoText.setHorizontalAlignment(JLabel.LEFT);
+		
 		labelInfo.setBounds(50, 250, 200, 80);
+		labelInfo.setFont(new Font("Tahoma", Font.PLAIN, 12));
+		labelInfo.setForeground(Color.BLACK);
+		labelInfo.setHorizontalAlignment(JLabel.LEFT);
 		
 		labelGenerationText.setBounds(250, 30, 200, 50);
-		labelGeneration.setBounds(300, 50, 200, 50);
+		labelGenerationText.setFont(new Font("Tahoma", Font.BOLD, 14));
+		labelGenerationText.setForeground(Color.BLACK);
+		labelGenerationText.setHorizontalAlignment(JLabel.LEFT);
 		
-		labelTopText.setBounds(475, 30, 200, 50);
-		panelTop.setBounds(400, 70, 250, 700);
+		labelGeneration.setBounds(300, 60, 200, 50);
+		labelGeneration.setFont(new Font("Tahoma", Font.PLAIN, 12));
+		labelGeneration.setForeground(Color.BLACK);
+		labelGeneration.setHorizontalAlignment(JLabel.LEFT);
+		
+		labelTopText.setBounds(505, 30, 200, 50);
+		labelTopText.setFont(new Font("Tahoma", Font.BOLD, 14));
+		labelTopText.setForeground(Color.BLACK);
+		labelTopText.setHorizontalAlignment(JLabel.LEFT);
+		
+		panelTop.setBounds(440, 80, 250, 700);
+		panelTop.setBackground(Color.WHITE);
+		panelTop.setOpaque(false);
 	}
 
 	//Add the elements to the Frame
@@ -248,6 +285,9 @@ public class StringGE{
 	private void createDefaultLabels() {
 		for (int i=0; i<iTop; i++) {
 			laTop[i] = new JLabel();
+			laTop[i].setFont(new Font("Tahoma", Font.PLAIN, 12));
+			laTop[i].setForeground(Color.BLACK);
+			laTop[i].setHorizontalAlignment(JLabel.LEFT);
 			panelTop.add(laTop[i]);
 		}
 	}
@@ -255,6 +295,14 @@ public class StringGE{
 	//Set new value for paragon label
 	public void setParagon(String sParagon) {
 		labelParagon.setText(sParagon);
+		
+		char[] cParagonDNA = sParagon.toCharArray();
+		char[] cProtoDNA = sProto.toCharArray();
+		int iScore = calcBackEnd.getGenomeScore(iProtoScore, cProtoDNA, cParagonDNA);
+
+		int iRed = createColor(iScore, iProtoScore,  "SUB");
+		int iBlue = createColor(iScore, iProtoScore, "ADD");
+		labelParagon.setForeground(new Color(iRed, 0, iBlue));
 	}
 
 	//Set new value for generaion label
@@ -262,23 +310,47 @@ public class StringGE{
 		labelGeneration.setText(sGen);
 	}	
 	
-	//Set New values for the i-th Top Genopme
+	//Set New values for the i-th Top Genome
 	public void setTop(int iInd, String sGenome) {
 		laTop[iInd].setText(sGenome);
+	}
+	
+	//Set Color value
+	public int createColor(int iScore, int iProtoScore, String sOperation) {
+		double iCol = 255 * (double) iScore / (double) iProtoScore;
+		if (sOperation == "ADD") {
+			iCol += 0;
+			if (iCol > 255) {
+				iCol = 255;
+			}
+		} else if (sOperation == "SUB") {
+			iCol = 255 - iCol;
+			if (iCol < 0) {
+				iCol = 0;
+			}
+		}
+
+		return (int) iCol;
+	}
+	
+	//Set Color for the i-th Top Genome
+	public void setColor(int iInd, int iProtoScore, int iScore) {
+		int iRed = createColor(iScore, iProtoScore,  "SUB");
+		int iBlue = createColor(iScore, iProtoScore, "ADD");
+		laTop[iInd].setForeground(new Color(iRed, 0, iBlue));;
 	}
 	
 	//Set new values for the information labels
 	public void setInformation(String sInfo) {
 		labelInfo.setText(sInfo);
 	}
-	
-	
+
 	//Print final assessment of the evolution on the GUI
 	private void result() {
 		String sInfo = (
 		"<html>" + "Population size: " + iPop + "<br>" +
 		"Speciment size: " + iProtoScore + "<br>" +
-		"Mutation Probability: " + Double.toString(dMutaProb * 100) + "%" + "</html>");
+		"Mutation probability: " + Double.toString(dMutaProb * 100) + "%" + "</html>");
 		setInformation(sInfo);
 		setParagon(caGenome.get(0).getDNA());
 	}
@@ -286,7 +358,13 @@ public class StringGE{
 	//Print the top 20 genomes on the GUI
 	private void top() {
 		for (int t=1; t<=20; t++) {
-			setTop((t-1), caGenome.get(t).getDNA());
+			String sGenome = caGenome.get(t).getDNA();
+			char[] cGenomeDNA = sGenome.toCharArray();
+			char[] cProtoDNA = sProto.toCharArray();
+			int iScore = calcBackEnd.getGenomeScore(iProtoScore, cProtoDNA, cGenomeDNA);
+
+			setTop((t-1), sGenome);
+			setColor((t-1), iProtoScore, iScore);
 		}
 	}
 	
@@ -298,7 +376,7 @@ public class StringGE{
 			caGenome = calcBackEnd.calculateScores(iPop, iProtoScore, sProto, caGenome);
 			caGenome = calcBackEnd.crossover(dMutaProb, iProtoScore, iPop, caGenome);
 
-			if (iGen % 2 == 0){
+			if (iGen % 1 == 0){
 				String sParagon = caGenome.get(0).getDNA();
 				
 				SwingUtilities.invokeLater(new Runnable() {
