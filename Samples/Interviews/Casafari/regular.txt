@@ -1,0 +1,22 @@
+- Extract urls like "http://mydomain.com/link-to-listing". Do not use url itself in regular expression. It should select only 4 links:
+(?<=<a class="pref-property-container" href=")(.*?)(?=")
+
+
+
+
+
+- Extract latitude value from html:
+
+(?<=data-coorgps=")([-]?.[\d]+[\].[\d]+)
+- Extract longitude value from html:
+(?<=data-coorgps="\d{2}\.\d{7},)(.+)(?=")
+
+
+- Extract all unique IDs from json, example of unique ID: "SV350":
+(?<=Property-No\.",")(.*?)(?="],)
+
+
+
+- Extract all unique IDs from json, that has "land":"ESP" inside, example of UID: SV350:
+(?<=No\.",)\W+(?:\w+\W+){0,100}?(?="land":"ESP")
+Comment: Far from perfect, but it gets the job done.
