@@ -4,8 +4,15 @@ import pandas as pd
 import numpy as np
 from matplotlib import pyplot as plt
 from fancyimpute import mice
+from sklearn.model_selection import train_test_split as split
+from sklearn import preprocessing as pp
+#Deep Learning with pytorch
+import torch
+from torch import optim
+from torch.autograd import Variable
+from torch import nn
+from torch.nn import functional as F
 
-#Functions
 
 #Data Loading
 def load(train_path, test_path):
@@ -23,17 +30,17 @@ def load(train_path, test_path):
 
 
 #Write to file
-def write(df_pred, l_train):
+def write(df_pred, l_train, path):
     m_temp = np.zeros((len(df_pred),2))
     for i in range(len(m_temp)):
-        m_temp[i,0] = l_train + 1 + i
-        m_temp[i,1]  = df_pred[i]
+        m_temp[i, 0] = l_train + 1 + i
+        m_temp[i, 1] = df_pred.iloc[0, :]
         
     df_sample = pd.DataFrame(m_temp,columns=['PassengerId', 'Survived']).astype(int)
     
     del m_temp, i
     
-    df_sample.to_csv("F:/Code/Python/2 Titanic/submission.csv", index = False)
+    df_sample.to_csv(path, index = False)
     return print("Write Completed")
 
 
@@ -121,12 +128,15 @@ def wrangle(df_all_x, m_all_y):
     
     return df_all_x
 
+
+#Data Imputation
 def impute(df_all_x):
     df_all_x.columns
     df_filled_x = mice.MICE().complete(df_all_x.as_matrix())
     df_filled_x = pd.DataFrame(df_filled_x, columns = df_all_x.columns)
     df_filled_x['Age'] = np.round(df_filled_x['Age'])
     return df_filled_x
+
 
 #New Features
 def new_feat(df_all_x):
@@ -179,19 +189,6 @@ def final(df_all_x, l_train, m_all_y):
                               )
 
     return end_train_x, end_train_y, end_test_x
-
-
-#Centering & Normalizing
-def centernorm(end_train_x, end_test_x):
-    end_means = end_train_x.mean(axis = 0)
-    end_std = end_train_x.std(axis = 0)
-    
-    end_train_x -= end_means
-    end_train_x /= end_std
-    end_test_x -= end_means
-    end_test_x /= end_std
-    
-    return end_train_x, end_test_x
 
 
 #Drop the correlated Vars
@@ -251,14 +248,84 @@ def feat_select(end_train_x, end_test_x)    :
             importance.loc[:, 'Importance'], 
             yerr = importance.loc[:, 'Std'], 
             align = 'center',
-            
             )
+    plt.show()
     
     #Drop the Irrelevant Features
     end_train_x = end_train_x[importance.loc[importance['Importance'] > 0.00,].index]
     end_test_x = end_test_x[importance.loc[importance['Importance'] > 0.00,].index]
     
     return end_train_x, end_test_x, importance
+
+
+#Neural Network algorithm
+def NeuralNet(trainX, trainY, testX, testY = None, e = 100, mode = "train"):
+    epochs = e
+    
+    def validate(testX, testY, mode):
+        correct = 0
+        if mode == "train":
+            predsY = []
+        elif mode == "validate":
+            total = len(testY)
+        
+        for i, record in enumerate(testX):
+            preds = net(record)
+            _, predicted = torch.max(preds.data, 0)
+            
+            if mode == "validate":
+                correct += (predicted[0] == testY[i])
+            elif mode == "train":
+                predsY.append(predicted)
+
+        if mode == "validate":
+            return (100 * correct / total)
+        elif mode == "train":
+            return pd.DataFrame(predsY)
+
+    class Net(nn.Module):
+        def __init__(self):
+            super(Net, self).__init__()
+            self.fc1 = nn.Linear(16, 50)
+            self.fc2 = nn.Linear(50, 50)
+            self.fc3 = nn.Linear(50, 50)
+            self.fc4 = nn.Linear(50, 2)
+    
+        def forward(self, x):
+            x = F.relu(self.fc1(x))
+            x = F.relu(self.fc2(x))
+            x = F.relu(self.fc3(x))
+            y_hat = F.logsigmoid(self.fc4(x))
+            
+            return y_hat
+        
+    net = Net()
+    optimizer = optim.SGD(net.parameters(), lr = 0.01, momentum = 0.9)
+    loss_func = torch.nn.CrossEntropyLoss()
+
+    if mode == "train":
+        print("\n" + "Training:")
+    elif mode == "validate":
+        print("\n" + "Validating:")
+    
+    for epoch in range(epochs):
+        preds = net(trainX)
+        loss = loss_func(preds, trainY)
+
+        if epoch % 100 == 0:
+            if mode == "validate":
+                val = validate(testX, testY, mode)
+                print("Epoch: %d - Train: %.3f - Val: %.3f" % ((epoch + 1), loss, val))
+            elif mode == "train":
+                print("Epoch: %d - Train: %.3f" % ((epoch + 1), loss))
+
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+    if mode == "train":
+        predsY = validate(testX, testY, mode)
+        return predsY
 
 #Script
 np.random.seed(117)
@@ -269,61 +336,59 @@ df_all_x = impute(df_all_x)
 df_all_x = new_feat(df_all_x)
 
 end_train_x, end_train_y, end_test_x = final(df_all_x, l_train, m_all_y)
-end_train_x, end_test_x = centernorm(end_train_x, end_test_x)
-
 end_train_x, end_test_x = dropcor(end_train_x, end_test_x)
 end_train_x, end_test_x, importance = feat_select(end_train_x, end_test_x)
 
-#Deep Learning with pytorch
-import torch
-from torch import optim
-from torch.autograd import Variable
-from torch import nn
-from torch.nn import functional as F
-import torch.utils.data as data_utils
+#Split fot validation
+dfValTrainX, dfValTestX, dfValTrainY, dfValTestY = split(end_train_x, end_train_y, test_size = 0.3)
 
-tTrainX = Variable(torch.from_numpy(end_train_x.as_matrix()).type(torch.FloatTensor))
-tTrainY = Variable(torch.from_numpy(end_train_y.as_matrix()).type(torch.LongTensor))
-tTestX = Variable(torch.from_numpy(end_test_x.as_matrix()).type(torch.FloatTensor))
+#Scaler for the Validation phase
+scalerVal = pp.StandardScaler().fit(dfValTrainX)
+dfValTrainX = pd.DataFrame(scalerVal.transform(dfValTrainX))
+dfValTestX = pd.DataFrame(scalerVal.transform(dfValTestX))
 
-epochs = 50000
+#Scaler for the Training phase
+scalerAll = pp.StandardScaler().fit(end_train_x)
+dfTrainX = pd.DataFrame(scalerAll.transform(end_train_x))
+dfTestX = pd.DataFrame(scalerAll.transform(end_test_x))
 
-class Net(nn.Module):
-    def __init__(self):
-        super(Net, self).__init__()
-        self.fc1 = nn.Linear(16, 100)
-        self.fc2 = nn.Linear(100, 100)
-        self.fc3 = nn.Linear(100, 2)
-
-    def forward(self, x):
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        y_hat = F.logsigmoid(self.fc3(x))
-        return y_hat
+#Putting tensors on the GPU or not
+if torch.cuda.is_available():
+    tValTrainX = Variable(torch.from_numpy(dfValTrainX.as_matrix()).cuda().type(torch.FloatTensor))
+    tValTrainY = Variable(torch.from_numpy(dfValTrainY.as_matrix()).cuda().type(torch.LongTensor))
+    tValTestX = Variable(torch.from_numpy(dfValTestX.as_matrix()).cuda().type(torch.FloatTensor))
+    tValTestY = torch.from_numpy(dfValTestY.as_matrix()).cuda().type(torch.FloatTensor)
     
-net = Net()
-print(net)
+    tTrainX = Variable(torch.from_numpy(dfTrainX.as_matrix()).cuda().type(torch.FloatTensor))
+    tTrainY = Variable(torch.from_numpy(m_all_y.as_matrix()).cuda().type(torch.LongTensor))
+    tTestX = Variable(torch.from_numpy(dfTestX.as_matrix()).cuda().type(torch.FloatTensor))
 
-optimizer = optim.SGD(net.parameters(), lr = 0.01, momentum = 0.9)
-loss_func = torch.nn.CrossEntropyLoss()
+else:
+    tValTrainX = Variable(torch.from_numpy(dfValTrainX.as_matrix()).type(torch.FloatTensor))
+    tValTrainY = Variable(torch.from_numpy(dfValTrainY.as_matrix()).type(torch.LongTensor))
+    tValTestX = Variable(torch.from_numpy(dfValTestX.as_matrix()).type(torch.FloatTensor))
+    tValTestY = torch.from_numpy(dfValTestY.as_matrix()).type(torch.FloatTensor)
 
-for epoch in range(epochs):
-    preds = net(tTrainX)
-    loss = loss_func(preds, tTrainY)
-    optimizer.zero_grad()
-    loss.backward()
-    optimize0r.step()
-    if epoch % 100 == 0:
-        print('Epoch: %d - Loss: %.3f' % ((epoch + 1), loss))
-        
-correct = 0
-total = 0
-for record in tTestX:
-    print(record)
-    outputs = net(record)
-    _, predicted = torch.max(outputs.data, 1)
-    total += labels.size(0)
-    correct += (predicted == labels).sum()
+    tTrainX = Variable(torch.from_numpy(dfTrainX.as_matrix()).cuda().type(torch.FloatTensor))
+    tTrainY = Variable(torch.from_numpy(m_all_y.as_matrix()).cuda().type(torch.LongTensor))
+    tTestX = Variable(torch.from_numpy(dfTestX.as_matrix()).cuda().type(torch.FloatTensor))
+    
+#Validate
+NeuralNet(trainX = tValTrainX, 
+          trainY = tValTrainY, 
+          testX = tValTestX, 
+          testY = tValTestY,
+          e = 4000, 
+          mode = "validate"
+          )
 
-print('Accuracy of the network on the 10000 test images: %d %%' % (
-    100 * correct / total))
+#Train
+tTestY = NeuralNet(trainX = tTrainX, 
+                   trainY = tTrainY, 
+                   testX = tTestX, 
+                   e = 4000, 
+                   mode = "train"
+                   )
+
+#Write to csv
+write(tTestY, l_train, "F:/Code/submission.csv")
