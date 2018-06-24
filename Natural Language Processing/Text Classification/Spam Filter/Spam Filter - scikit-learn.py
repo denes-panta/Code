@@ -184,14 +184,6 @@ if __name__ == "__main__":
     token.fit_on_texts(dfTrain['email'])
     wordInd = token.word_index
     
-    # convert text to sequence of tokens and pad them to ensure equal length vectors 
-    seqTrainX = sequence.pad_sequences(token.texts_to_sequences(dfTrain["email"]), 
-                                       maxlen = 1000
-                                       )
-    seqTestX = sequence.pad_sequences(token.texts_to_sequences(dfTest["email"]), 
-                                      maxlen = 1000
-                                      )
-    
     #Create token-embedding mapping
     mEmbed = np.zeros((len(wordInd) + 1, 300))
     for word, i in wordInd.items():
