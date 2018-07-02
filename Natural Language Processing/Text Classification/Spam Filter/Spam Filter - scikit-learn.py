@@ -28,7 +28,7 @@ from sklearn.svm import SVC
 from sklearn.ensemble import RandomForestClassifier as RFC
 
 #Keras
-from keras.preprocessing import text, sequence
+from keras.preprocessing import text
 
 #Functions
 #Import data
