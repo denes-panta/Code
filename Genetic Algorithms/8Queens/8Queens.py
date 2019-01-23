@@ -12,26 +12,37 @@ class queens(object):
     
     #Geneartion count
     generation = 0
+	
     #Number of times the population is initialised
     restart = 1
+	
     #Size of the squers
     size = 50
+	
     #Number of squares on the boards
     boardLength = 8 
+	
     #Starttime for the timer
     starttime = 0
+	
     #List for square coordinates    
-    centers = []    
+    centers = []
+	
     #Population of the species     
     population = []
+	
     #Fitness scores for the species
-    scores = [] 
+    scores = []
+
     #Paragon index and score
-    paragon_is = [0, 0]  
+    paragon_is = [0, 0]
+	
     #Maximum fitnes score = 28, because 2 under 8 = 8*7/2
     max_score = 28
+	
     #Initial mutation probability
     mutation = 0.01
+	
     #Proportions of near solutions
     prob_27 = 0.0 
 
@@ -44,23 +55,31 @@ class queens(object):
     
     #np.random.seed(117)
     
-    def __init__(self, pop, max_mutaProb, max_spike, 
-                 spike_limit, exponent, max_gen, display):
-        #Input variables
+    def __init__(
+	    self, pop, max_mutaProb, max_spike, 
+	    spike_limit, exponent, max_gen, display):
+        
+	#Input variables
         #Size of the population
         self.n = pop
+	
         #Ceiling of mutation probability
         self.max_mutation = max_mutaProb
+	
         #Population reinitialised after gen: max_gen
         self.max_generation = max_gen
+	
         #Every n-th generation displayed
         self.display_generation = display
+	
         #The exponent for the fitness scores
         self.exp = exponent 
+	
         #Mutation spike control
         self.max_spike = max_spike
         self.mutaspike = int(math.floor(self.n / max_spike))
         self.mutaspike_limit = spike_limit
+	
         #Initialise the pygame Display
         pg.init()
         self.fnt = pg.font.SysFont("monospace", 18)
@@ -71,12 +90,16 @@ class queens(object):
         #Initialise the initial values
         #Variable to see if we found the solution
         self.done = False
+	
         #Variable to start/stop the evolutions
         self.start = False
+	
         #Fill in the posible x and y coordinates 
         self.center_fill()
+	
         #Create the first generation
         self.init_pop()
+	
         #Calculate the initial scores
         self.scores = self.calc_scores() 
 
@@ -198,26 +221,35 @@ class queens(object):
             
             for y in range(1, self.boardLength+1):
                 if cnt % 2 == 0:
-                    pg.draw.rect(self.screen, 
-                                     self.LIGHT, 
-                                     [self.size*x, self.size*y, 
-                                      self.size, self.size]
-                                     )
+                    pg.draw.rect(
+			    self.screen, 
+                            self.LIGHT, 
+                            [self.size*x, 
+			     self.size*y, 
+			     self.size, 
+			     self.size]
+		    )
                 else:
-                    pg.draw.rect(self.screen, 
-                                     self.BROWN, 
-                                     [self.size*x, self.size*y, 
-                                      self.size, self.size]
-                                     )
+                    pg.draw.rect(
+			    self.screen, 
+                            self.BROWN, 
+                            [self.size*x, 
+			     self.size*y, 
+                             self.size, 
+			     self.size]
+                    )
                 cnt += 1
  
         #Draw the Border
-        pg.draw.rect(self.screen, 
-                         self.BLACK, 
-                         [self.size, 
-                          self.size, 
-                          self.boardLength*self.size, 
-                          self.boardLength*self.size], 1)
+        pg.draw.rect(
+		self.screen, 
+                self.BLACK, 
+                [self.size, 
+                 self.size, 
+                 self.boardLength*self.size, 
+                 self.boardLength*self.size],
+		1
+	)
  
     #Populate the list with center coordinates           
     def center_fill(self):
@@ -229,8 +261,10 @@ class queens(object):
         self.population = []
 
         for speciment in range(self.n):
-            self.population.append([np.random.choice(self.centers, size = 8), 
-                                    np.random.choice(self.centers, size = 8)])           
+            self.population.append(
+		    [np.random.choice(self.centers, size = 8), 
+                     np.random.choice(self.centers, size = 8)]
+	    )           
     
     #Put up the pieces on the board
     def init_queens(self):
@@ -251,8 +285,10 @@ class queens(object):
         
         #Temporary array for the new scores
         new_scores = [] 
+	
         #Reset the paragon index and score to 0
         self.paragon_is = [0, 0] 
+	
 	#Count the number of near solutions
         count_27 = 0
         
@@ -274,10 +310,14 @@ class queens(object):
             cross2 = []
             
             for x in range(8):
-                cross1.append(self.population[speciment][0][x] - \
-                              self.population[speciment][1][x])
-                cross2.append(self.population[speciment][0][x] + \
-                              self.population[speciment][1][x])
+                cross1.append(
+			self.population[speciment][0][x] - \
+                        self.population[speciment][1][x]
+		)
+                cross2.append(
+			self.population[speciment][0][x] + \
+                        self.population[speciment][1][x]
+		)
             
             score += abs(len(cross1) - len(set(cross1)))
             score += abs(len(cross2) - len(set(cross2)))
@@ -312,6 +352,7 @@ class queens(object):
     def crossover(self):
         #Increase the generation number
         self.generation += 1 
+	
         #List for the new generation   
         new_generation = [] 
         
@@ -374,112 +415,167 @@ class queens(object):
 
     #Status label
     def status_label(self, status):
-        pg.draw.rect(self.screen, self.WHITE, [460, 400, 340, 20])
-        l_status = self.fnt.render("Current status: %s" % (status), 
-                                   True, 
-                                   (self.BLACK))
+        pg.draw.rect(
+		self.screen, 
+		self.WHITE, [460, 400, 340, 20])
+        l_status = self.fnt.render(
+		"Current status: %s" % (status), 
+                True, 
+                (self.BLACK)
+	)
         self.screen.blit(l_status, (460, 400))
     
     #Update labels
     def labels(self):
-        pg.draw.rect(self.screen, self.WHITE, [460, 280, 340, 20])
-        l_curgen = self.fnt.render("Current generation: %d" % (self.generation), 
-                                   True, 
-                                   (self.BLACK))
+        pg.draw.rect(
+		self.screen, 
+		self.WHITE, 
+		[460, 280, 340, 20]
+	)
+        l_curgen = self.fnt.render(
+		"Current generation: %d" % (self.generation), 
+                True, 
+                (self.BLACK)
+	)
         self.screen.blit(l_curgen, (460, 280))
 
-        pg.draw.rect(self.screen, self.WHITE, [460, 300, 340, 20])
-        l_curmuta = self.fnt.render("Current mutation rate: %.1f%%" % (self.mutation * 100), 
-                                    True, 
-                                    (self.BLACK))
+        pg.draw.rect(
+		self.screen, 
+		self.WHITE, 
+		[460, 300, 340, 20]
+	)
+        l_curmuta = self.fnt.render(
+		"Current mutation rate: %.1f%%" % (self.mutation * 100), 
+                True, 
+                (self.BLACK)
+	)
         self.screen.blit(l_curmuta, (460, 300))
 
-        pg.draw.rect(self.screen, self.WHITE, [460, 320, 340, 20])
-        l_retries = self.fnt.render("Number of rounds: %d" % (self.restart), 
-                                    True, 
-                                    (self.BLACK))
+        pg.draw.rect(
+		self.screen, 
+		self.WHITE, 
+		[460, 320, 340, 20]
+	)
+        l_retries = self.fnt.render(
+		"Number of rounds: %d" % (self.restart), 
+                True, 
+                (self.BLACK)
+	)
         self.screen.blit(l_retries, (460, 320))
 
-        pg.draw.rect(self.screen, self.WHITE, [460, 340, 340, 20])
-        l_fitscore = self.fnt.render("Current best score: %d" % (self.paragon_is[1]), 
-                                     True, 
-                                     (self.BLACK))
+        pg.draw.rect(
+		self.screen, 
+		self.WHITE, 
+		[460, 340, 340, 20]
+	)
+        l_fitscore = self.fnt.render(
+		"Current best score: %d" % (self.paragon_is[1]), 
+                True, 
+                (self.BLACK)
+	)
         self.screen.blit(l_fitscore, (460, 340))
     
     #Static labels
     def static_labels(self):
-        l_start = self.fnt.render("Press 's' to start the evolution", 
-                                  True, 
-                                  (self.BLACK))
+        l_start = self.fnt.render(
+		"Press 's' to start the evolution", 
+                True, 
+                (self.BLACK)
+	)
         self.screen.blit(l_start, (50, 460))
         
-        l_reset = self.fnt.render("Press 'r' to reset to starting point", 
-                                  True, 
-                                  (self.BLACK))
+        l_reset = self.fnt.render(
+		"Press 'r' to reset to starting point", 
+                True, 
+                (self.BLACK)
+	)
         self.screen.blit(l_reset, (50, 480))
         
-        l_quit = self.fnt.render("Press 'q' to quit the application", 
-                                 True, 
-                                 (self.BLACK))
+        l_quit = self.fnt.render(
+		"Press 'q' to quit the application", 
+                True, 
+                (self.BLACK)
+	)
         self.screen.blit(l_quit, (50, 500))
         
-        l_total = self.fnt.render("%d possible setups" % (self.bruteforce), 
-                                  True, 
-                                  (self.BLACK))
+        l_total = self.fnt.render(
+		"%d possible setups" % (self.bruteforce), 
+                True, 
+                (self.BLACK)
+	)
         self.screen.blit(l_total, (100, 550))
         
-        l_input = self.fnt.render("Input variables", 
-                                  True, 
-                                  (self.BLACK))
+        l_input = self.fnt.render(
+		"Input variables", 
+                True, 
+                (self.BLACK)
+	)
         self.screen.blit(l_input, (460, 50))
         
-        l_pop = self.fnt.render("Population size: %d" % (self.n), 
-                                True, 
-                                (self.BLACK))
+        l_pop = self.fnt.render(
+		"Population size: %d" % (self.n), 
+                True, 
+                (self.BLACK)
+	)
         self.screen.blit(l_pop, (460, 80))
         
-        l_genlim = self.fnt.render("Generation limit: %d" % (self.max_generation), 
-                                   True, 
-                                   (self.BLACK))
+        l_genlim = self.fnt.render(
+		"Generation limit: %d" % (self.max_generation), 
+                True, 
+                (self.BLACK)
+	)
         self.screen.blit(l_genlim, (460, 100))
         
-        l_mutalim = self.fnt.render("Mutation limit: %.1f%%" % (self.max_mutation * 100), 
-                                    True, 
-                                    (self.BLACK))
+        l_mutalim = self.fnt.render(
+		"Mutation limit: %.1f%%" % (self.max_mutation * 100), 
+                True, 
+                (self.BLACK)
+	)
         self.screen.blit(l_mutalim, (460, 120))
         
-        l_exp = self.fnt.render("Fitness score exponent: %d" % (self.exp), 
-                                   True, 
-                                   (self.BLACK))
+        l_exp = self.fnt.render(
+		"Fitness score exponent: %d" % (self.exp), 
+                True, 
+                (self.BLACK)
+	)
         self.screen.blit(l_exp, (460, 140))
         
-        l_spike = self.fnt.render("Mutation spike: %d" % (self.max_spike), 
-                                   True, 
-                                   (self.BLACK))
+        l_spike = self.fnt.render(
+		"Mutation spike: %d" % (self.max_spike), 
+                True, 
+                (self.BLACK)
+	)
         self.screen.blit(l_spike, (460, 160))
 
-        l_spk_lmt = self.fnt.render("Spike limit: %.1f%%" % (self.mutaspike_limit * 100), 
-                                   True, 
-                                   (self.BLACK))
+        l_spk_lmt = self.fnt.render(
+		"Spike limit: %.1f%%" % (self.mutaspike_limit * 100), 
+                True, 
+                (self.BLACK)
+	)
         self.screen.blit(l_spk_lmt, (460, 180))
         
-        l_mutalim = self.fnt.render("Display every %d generations" % (self.display_generation), 
-                                    True, 
-                                    (self.BLACK))
+        l_mutalim = self.fnt.render(
+		"Display every %d generations" % (self.display_generation), 
+                True, 
+                (self.BLACK)
+	)
         self.screen.blit(l_mutalim, (460, 200))
 
-        l_evol = self.fnt.render("Evolutionary variables", 
-                                 True, 
-                                 (self.BLACK))
+        l_evol = self.fnt.render(
+		"Evolutionary variables", 
+                True, 
+                (self.BLACK)
+	)
         self.screen.blit(l_evol, (460, 250))
 
 
 if __name__ == "__main__":
-    game = queens(pop = 300, 
-                  max_mutaProb = 0.1,
-                  max_spike = 10,
-                  spike_limit = 0.65,
-                  exponent = 4,
-                  max_gen = 1000,
-                  display = 1
-                  )
+    game = queens(
+	    pop = 300, 
+            max_mutaProb = 0.1,
+            max_spike = 10,
+            spike_limit = 0.65,
+            exponent = 4,
+            max_gen = 1000,
+            display = 1
+    )
