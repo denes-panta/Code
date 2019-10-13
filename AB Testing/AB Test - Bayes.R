@@ -12,12 +12,13 @@ Baseline <- rbinom(2000, 1, .25) #Baseline hypothetical conversion rate of 25%
 plotBeta(65, 200)
 
 #Running the test
-AB1 <- bayesTest(New_layout,
-                 Baseline, 
-                 priors = c('alpha' = 65, 'beta' = 200), 
-                 n_samples = 1e5, 
-                 distribution = 'bernoulli'
-                 )
+AB1 <- bayesTest(
+  New_layout,
+  Baseline, 
+  priors = c('alpha' = 65, 'beta' = 200), 
+  n_samples = 1e5, 
+  distribution = 'bernoulli'
+)
 
 AB_s <- summary(AB1)
 plot(AB1)

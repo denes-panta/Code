@@ -18,13 +18,14 @@ N <- 685 #sample size
 
 
 #Estimate size of Test and Control Group -> 1134.07 ~ 1150 / group
-power.prop.test(n = NULL,
-                p1 = pb,
-                p2 = pn, 
-                power = 0.80, 
-                alternative = 'two.sided', 
-                sig.level = 0.05
-                )
+power.prop.test(
+  n = NULL,
+  p1 = pb,
+  p2 = pn, 
+  power = 0.80, 
+  alternative = 'two.sided', 
+  sig.level = 0.05
+)
 
 #Generate random Groups
 base <- rbinom(N, 1, pb)
