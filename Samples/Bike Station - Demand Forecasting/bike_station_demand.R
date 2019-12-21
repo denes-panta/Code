@@ -12,7 +12,7 @@ library('reshape2')
 library('Metrics')
 library('magrittr')
 
-setwd('D:\\Code\\Interviews\\dataroots\\data')
+setwd('D:\\Code\\bike_station')
 set.seed(1)
 
 dfTrip <- read.csv('trip_data.csv', stringsAsFactors = F)

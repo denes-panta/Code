@@ -14,7 +14,7 @@ from sklearn import cluster as clust
 
 random.seed(1)
 pd.options.mode.chained_assignment = None
-os.chdir('D:\\Code\\Interviews\\sentience')
+os.chdir('D:\\Code\\geodata')
 
 
 # Node to perform Data Engineering

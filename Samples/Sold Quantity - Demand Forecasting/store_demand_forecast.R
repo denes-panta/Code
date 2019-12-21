@@ -15,7 +15,7 @@ library(caret)
 library(Metrics)
 
 # Change working directory
-setwd('c:/test_input')
+setwd('c:\\sold_quantity')
 
 # Set seed
 set.seed(1)
@@ -24,7 +24,7 @@ set.seed(1)
 ### Loading and Basic Pre-processing
 
 # Load the Sales Data
-dfSales <- read.csv('input_data/sales_data.csv', stringsAsFactors = F, sep = ';')
+dfSales <- read.csv('sales_data.csv', stringsAsFactors = F, sep = ';')
 colnames(dfSales)[1] <- 'date'
 
 # Replace decimal commas with dots
