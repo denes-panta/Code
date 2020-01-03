@@ -5,7 +5,7 @@ library(caret)
 library(DMwR)
 
 # Change workplace to the Grover directory
-setwd('D:\\Code\\Fraud')
+setwd('D:\\Code\\Code\\Samples\\Transactions - Fraud Detection')
 
 # set seed
 set.seed(1)
@@ -38,11 +38,13 @@ ensemble <- function(dfEnsemble) {
   dfEnsemble[dfEnsemble == 'bad'] <- 1
   dfEnsemble[] <- lapply(dfEnsemble, as.integer)
 
-  dfEnsemble$knn <- dfEnsemble$knn
-  dfEnsemble$kknn <- dfEnsemble$kknn
+  dfEnsemble$kknn <- dfEnsemble$kknn * 3
+  dfEnsemble$svmlr <- dfEnsemble$svmlr * 1.5
+  dfEnsemble$proto <- dfEnsemble$proto * 1.5
+  
   dfEnsemble <- transform(
     dfEnsemble, 
-    final = round(rowSums(dfEnsemble) / ncol(dfEnsemble))
+    final = round(rowSums(dfEnsemble) / (ncol(dfEnsemble) + 3))
     )
   
   dfEnsemble[dfEnsemble$final == 0, 'final'] <- 'good'
@@ -65,11 +67,10 @@ ensemble <- function(dfEnsemble) {
   return(result)
 }
 
-ensemble(dfEnsemble)
 
 # Read in the files
-dfTrain <- read.csv('training.csv', sep = ';', stringsAsFactors = F)
-dfTest <- read.csv('validation.csv', sep = ';', stringsAsFactors = F)
+dfTrain <- read.csv('resources\\training.csv', sep = ';', stringsAsFactors = F)
+dfTest <- read.csv('resources\\validation.csv', sep = ';', stringsAsFactors = F)
 
 # Exploration and missing value handling
 
@@ -519,10 +520,10 @@ ctrl <- trainControl(
 
 # Useful models for the ensemble
 # KKNN
-#   Accuracy : 0.8939 
-#   95% CI : (0.8632, 0.9197)
-#   Sensitivity : 0.9435
-#   Specificity : 0.7857 
+#   Accuracy : 0.8837 
+#   95% CI : (0.8519, 0.9107)
+#   Sensitivity : 0.9405
+#   Specificity : 0.7597 
 tunegrid <- expand.grid(
   .kmax = 5,
   .distance = seq(0.5, 1, 0.05),
@@ -539,31 +540,11 @@ model_kknn_all <- caret::train(
 
 validate(model_kknn_all, dfTest)
 
-# Greedy Prototype Selection
-#   Accuracy : 0.8163
-#   95% CI : (0.7791, 0.8496)
-#   Sensitivity : 0.8958
-#   Specificity : 0.6429
-tunegrid <- expand.grid(
-  .eps = 5, 
-  .Minkowski = 0.5
-  )
-
-model_proto_all <- caret::train(
-  Class ~ .,
-  data = dfTrain_smote_400,
-  method = 'protoclass',
-  tuneGrid = tunegrid,
-  trControl = svm_ctrl
-  )
-
-validate(model_proto_all, dfTest)
-
 # L2 Regularized Linear Support Vector Machines with Class Weights
-#   Accuracy : 0.7327
-#   95% CI : (0.6911, 0.7714)
-#   Sensitivity : 0.7411
-#   Specificity : 0.7143
+#   Accuracy : 0.7776
+#   95% CI : (0.7381, 0.8136)
+#   Sensitivity : 0.8690
+#   Specificity : 0.5779
 svm_ctrl <- trainControl(
   method = 'repeatedcv',
   number = 5,
@@ -590,11 +571,31 @@ model_svmlr_all <- caret::train(
 
 validate(model_svmlr_all, dfTest)
 
+# Greedy Prototype Selection
+#   Accuracy : 0.8163
+#   95% CI : (0.7791, 0.8496)
+#   Sensitivity : 0.8958
+#   Specificity : 0.6429
+tunegrid <- expand.grid(
+  .eps = 5, 
+  .Minkowski = 0.5
+  )
+
+model_proto_all <- caret::train(
+  Class ~ .,
+  data = dfTrain_smote_400,
+  method = 'protoclass',
+  tuneGrid = tunegrid,
+  trControl = svm_ctrl
+  )
+
+validate(model_proto_all, dfTest)
+
 # Create the ensemble model
-#   Accuracy : 0.8898 
-#   95% CI : (0.8587, 0.9161)
-#   Sensitivity : 0.9226  
-#   Specificity : 0.8182
+#   Accuracy : 0.8939 
+#   95% CI : (0.8632, 0.9197)
+#   Sensitivity : 0.9345  
+#   Specificity : 0.8052
 dfEnsemble <- data.frame(
   kknn = predict(model_kknn_all, dfTest),
   proto = predict(model_proto_all, dfTest),
