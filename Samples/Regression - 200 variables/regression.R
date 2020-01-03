@@ -345,7 +345,6 @@ model_xgbtree <- caret::train(
 
 validate(model_xgbtree, dfTrain_v, dfTrain_v$target)
 
-
 #### Train an randomforest model on the full training dataset and make predictions
 model_rf_full <- caret::train(
   target ~ .,
