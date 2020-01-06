@@ -1,0 +1,4 @@
+Bro-bot: Welcome to Truck Help-desk, I'm Bro-bot.
+(Type "quit" to end the conversation).
+
+You: quit

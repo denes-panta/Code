@@ -1,0 +1,22 @@
+Bro-bot: Welcome to Truck Help-desk, I'm Bro-bot.
+(Type "quit" to end the conversation).
+
+You: hi
+Bro-bot: Hi there, how can I help you?
+
+You: can you give some information
+Bro-bot: I can provide you the details of a truck based on its licence plate number (Please put the licence plate number into breckets: () ).
+
+You: (KC PT 90)
+Bro-bot: I can provide you with the location, fleet number or cargo of the truck.
+
+You: what is the vehicle's location
+Bro-bot: It's location is: Ireland
+
+You: what is the cargo
+Bro-bot: The payload is: groceries
+
+You: can you give me the fleet number
+Bro-bot: The specs of KC PT 90 are: Height: 2.15; Width: 2.56; Length: 9.86; Fleet number: 28.
+
+You: quit
