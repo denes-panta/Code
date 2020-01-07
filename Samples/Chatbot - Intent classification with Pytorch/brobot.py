@@ -51,26 +51,26 @@ class brobot(object):
         # self.lSW = set(stopwords.words('english')) 
 
         # If the pre-processed data exists, load them
-        if os.path.exists('data\\raw.pickle') and forceReTrain == False:
+        if os.path.exists('data/raw.pickle') and forceReTrain == False:
             self.loadRawData()
             self.loadEncodedData()
         
         # If not, load the json file, pre-process and save the data
-        elif not os.path.exists('data\\enc.pickle') or forceReTrain == True:
+        elif not os.path.exists('data/enc.pickle') or forceReTrain == True:
             self.loadNewData()
             self.preProcessData()
-            self.saveRawData()         
-            self.saveEncodedData()        
+            self.saveRawData()
+            self.saveEncodedData()
         
         # definte the model
         self.defineModel()
         
         # If a trained model exists, load it
-        if os.path.exists('model\\brain.model') and forceReTrain == False:
+        if os.path.exists('model/brain.model') and forceReTrain == False:
             self.loadModel()
         
         # If not, create one
-        elif not os.path.exists('model\\brain.model') or forceReTrain == True:
+        elif not os.path.exists('model/rain.model') or forceReTrain == True:
             self.createModel()
         
         # Run the chatbot engine
@@ -78,14 +78,14 @@ class brobot(object):
         
     # Load new data from a json file
     def loadNewData(self):
-        with open('data\\intents.json', 'r') as file:
+        with open('data/intents.json', 'r') as file:
             self.dIntents = json.load(file)
         
         file.close()
     
     # Save the processed raw data via pickle
     def saveRawData(self):
-        with open('data\\raw.pickle', 'wb') as file:
+        with open('data/raw.pickle', 'wb') as file:
             pickle.dump((
                 self.lLabels,
                 self.lDocs_x, 
@@ -99,14 +99,14 @@ class brobot(object):
     
     # Save the encoded data via pickle
     def saveEncodedData(self):
-        with open('data\\enc.pickle', 'wb') as file:
+        with open('data/enc.pickle', 'wb') as file:
             pickle.dump((self.lInput, self.lOutput), file)
             
         file.close()
     
     # Load pre-processed raw data
     def loadRawData(self):
-        with open('data\\raw.pickle', 'rb') as file:
+        with open('data/raw.pickle', 'rb') as file:
             self.lLabels, \
             self.lDocs_x, self.lDocs_y, \
             self.dResponses, self.iMaxIntentLen = pickle.load(file)
@@ -115,7 +115,7 @@ class brobot(object):
     
     # Load encoded data
     def loadEncodedData(self):
-        with open('data\\enc.pickle', 'rb') as file:
+        with open('data/enc.pickle', 'rb') as file:
             self.lInput, self.lOutput = pickle.load(file)
 
         file.close()
@@ -385,13 +385,13 @@ class brobot(object):
             scheduler.step()
         
         # Save the model at the end
-        torch.save(self.model.state_dict(), 'model\\brain.model')
+        torch.save(self.model.state_dict(), 'model/brain.model')
         
         print('Finished Training')
             
     # Load he model
     def loadModel(self):
-        self.model.load_state_dict(torch.load('model\\brain.model'))
+        self.model.load_state_dict(torch.load('model/brain.model'))
 
     # Chatbot engine        
     def engine(self):
@@ -401,7 +401,7 @@ class brobot(object):
         # Create a file for the conversation
         sDateTime = dt.datetime.utcnow().strftime('%Y-%m-%d_%H_%M_%S.%f')[:-3]
         sName = 'brobot_conv_' + sDateTime + '.txt'
-        fileRecord = open('conversations\\' + sName, 'w')
+        fileRecord = open('conversations/' + sName, 'w')
         
         # Print out a welcome message
         sWelcome_1 = 'Bro-bot: Welcome to Truck Help-desk, I\'m Bro-bot.' + '\n'
@@ -440,7 +440,7 @@ class brobot(object):
                 # Set the found truck to None
                 lTruck = None
                 
-                with open('data\\truck_data.csv', 'r') as file_truck:
+                with open('data/truck_data.csv', 'r') as file_truck:
                     reader = csv.reader(file_truck, delimiter = ";")
                     
                     # Try to find the queried truck                    
