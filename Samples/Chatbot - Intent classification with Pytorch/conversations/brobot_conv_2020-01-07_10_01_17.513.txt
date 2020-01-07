@@ -1,0 +1,25 @@
+Bro-bot: Welcome to Truck Help-desk, I'm Bro-bot.
+(Type "quit" to end the conversation).
+
+You: hi
+Bro-bot: Hi there, how can I help you?
+
+You: i need the details of a truck
+Bro-bot: I can provide you the details of a truck based on its licence plate number (Please put the licence plate number into breckets: () ).
+
+You: (asdfewa)
+Bro-bot: The licence plate is unkwnown, please try another.
+
+You: (WOB ZK 295)
+Bro-bot: I can provide you with the location, fleet number or cargo of the truck.
+
+You: i need the location
+Bro-bot: It's location is: Germany
+
+You: can you tell me about the cargo
+Bro-bot: The payload is: bunny-slippers
+
+You: what is the fleet number of the vehicle
+Bro-bot: The specs of WOB ZK 295 are: Height: 2.11; Width: 3.20; Length: 12.50; Fleet number: 47.
+
+You: quit

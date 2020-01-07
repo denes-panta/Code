@@ -21,15 +21,12 @@ import json
 import numpy as np
 from sklearn.model_selection import train_test_split as split
 
-
-# Change director
-os.chdir('D:\Code\Code\Samples\Chatbot - Intent classification with Pytorch')
-
+# Change directory
+os.chdir(os.path.dirname(os.path.realpath('__file__')))
 
 # Import custom classes
 from network import ConvNetwork
 from dataloader import SampleLoader
-
 
 # Chatbot class
 class brobot(object):
@@ -535,5 +532,5 @@ class brobot(object):
                     fileRecord.write(sResponse + '\n')
                     print(sResponse)
 
-if __name__ == 'main':
+if __name__ == '__main__':
     truckbot = brobot(forceReTrain = False)
