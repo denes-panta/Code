@@ -8,7 +8,7 @@ set.seed(1)
 
 
 #### Loading
-setwd('D:\\Code\\Code\\Samples\\Regression - 200 variables')
+setwd('D:\\Code\\Code\\Samples\\200 variables - Regression')
 
 dfTrain <- read.csv('resources\\train.csv', stringsAsFactors = F)
 dfTest <- read.csv('resources\\test.csv', stringsAsFactors = F)
@@ -206,55 +206,50 @@ summary(model_lm_cat)
 dfTrain <- cbind(dfChar, dfNum)
 
 
-### Remove outliers based on continous variables
+### Remove outliers based from the continous variables
+# Apply a linear model to check for outliers
+model_lm_num <- lm(formula = target ~ ., dfNum)
+summary(model_lm_num)
+
+# Analyse regression output
+# The residuals show some outliers
+# The Q-Q plot show some deviation from normality
+par(mfrow = c(2, 2))
+plot(model_lm_num)
+
+par(mfrow = c(1, 1))
 boxplot(dfNum)
 
-# Var005 had some outliers
-vCutoff <- quantile(dfNum$var005, c(.01, .99))
-dfNum <- dfNum[(dfNum$var005 > vCutoff[1] & dfNum$var005 < vCutoff[2]), ]
+# Identify cook's distance and create a cutoff line at a score of 2
+model_cooks_dist <- cooks.distance(model_lm_num)
+plot(
+  model_cooks_dist, 
+  pch = "*", 
+  cex = 2, 
+  main = "Influential Obs by Cooks distance"
+  )
+abline(h = 2 * mean(model_cooks_dist, na.rm = T), col = 'red')
+text(x = 1:length(model_cooks_dist) + 1, 
+     y = cooksd,
+     labels = ifelse(model_cooks_dist > 2 * mean(model_cooks_dist, na.rm = T),
+                     names(model_cooks_dist), ''), 
+     col = 'red'
+     )
 
-boxplot(dfNum)
-
-# Var008 seems to be fine
-
-# var009 seems to have some outliers, but removing them hurts the performance
-
-# var024 seems to have some outliers, but removing them hurts the performance
-
-# var044 seems to have some outliers, but removing them hurts the performance
-
-# var045 seems to be fine
-
-# var072 seems to have some outliers, but removing them hurts the performance
-
-# var074 seems to have some outliers, but removing them hurts the performance
-
-# var125 had some outliers
-vCutoff <- quantile(dfNum$var125, c(.02, .99))
-dfNum <- dfNum[(dfNum$var125 > vCutoff[1] & dfNum$var125 < vCutoff[2]), ]
-
-boxplot(dfNum)
-
-# var130 seems to have some outliers, but removing them hurts the performance
-
-# var170 seems to be fine
-
-# var175 had some outliers
-vCutoff <- quantile(dfNum$var175, c(.01, .99))
-dfNum <- dfNum[(dfNum$var175 > vCutoff[1] & dfNum$var175 < vCutoff[2]), ]
-
-boxplot(dfNum)
-
-# var178 had some outliers
-vCutoff <- quantile(dfNum$var178, c(.01, .99))
-dfNum <- dfNum[(dfNum$var178 > vCutoff[1] & dfNum$var178 < vCutoff[2]), ]
-
-boxplot(dfNum)
+# Remove any potentially influental outlier with a score higher that 2 cooksd
+vMeanCooksD <- mean(2 * model_cooks_dist, na.rm = T)
+vInfluential <- model_cooks_dist[model_cooks_dist > vMeanCooksD]
+vInfluential <- names(vInfluential)
+dfNum <- dfNum[!row.names(dfNum) %in% vInfluential, ]
 
 # Apply a linear model to test performance
 model_lm_num <- lm(formula = target ~ ., dfNum)
 summary(model_lm_num)
+par(mfrow = c(2, 2))
+plot(model_lm_num)
 
+# Filter the entire dataframe based on the identified potential outliers
+dfTrain <- dfTrain[!row.names(dfTrain) %in% vInfluential, ]
 
 #### Save the preprocessed data
 write.csv(dfTrain, 'train_processed.csv', row.names = F)
@@ -280,7 +275,7 @@ ctrl <- trainControl(
   savePredictions = T
   )
 
-# Elastic net regression - RMSE : 0.7392751
+# Elastic net regression - RMSE : 0.4678055
 model_enet <- caret::train(
   target ~ .,
   data = dfTrain_t,
@@ -291,7 +286,7 @@ model_enet <- caret::train(
 
 validate(model_enet, dfTrain_v, dfTrain_v$target)
 
-# kknn - RMSE : 0.5844215
+# kknn - RMSE : 0.5302197
 model_kknn <- caret::train(
   target ~ .,
   data = dfTrain_t,
@@ -302,7 +297,7 @@ model_kknn <- caret::train(
 
 validate(model_kknn, dfTrain_v, dfTrain_v$target)
 
-# svmLinear - RMSE : 0.8127583
+# svmLinear - RMSE : 0.4853201
 model_svmlin <- caret::train(
   target ~ .,
   data = dfTrain_t,
@@ -312,7 +307,7 @@ model_svmlin <- caret::train(
 
 validate(model_svmlin, dfTrain_v, dfTrain_v$target)
 
-# svmRadial - RMSE : 0.5174954
+# svmRadial - RMSE : 0.4875742
 model_svmrad <- caret::train(
   target ~ .,
   data = dfTrain_t,
@@ -323,7 +318,7 @@ model_svmrad <- caret::train(
 
 validate(model_svmrad, dfTrain_v, dfTrain_v$target)
 
-# Randomforest - RMSE : 0.5016872
+# Randomforest - RMSE : 0.4876961
 model_rf <- caret::train(
   target ~ .,
   data = dfTrain_t,
@@ -334,7 +329,18 @@ model_rf <- caret::train(
 
 validate(model_rf, dfTrain_v, dfTrain_v$target)
 
-# XgbTree - RMSE : 0.5157453
+# XgbLinear - RMSE : 0.5127372
+model_xgblin <- caret::train(
+  target ~ .,
+  data = dfTrain_t,
+  method = 'xgbLinear',
+  tuneLength = 5,
+  trControl = ctrl
+  )
+
+validate(model_xgblin, dfTrain_v, dfTrain_v$target)
+
+# XgbTree - RMSE : 0.4572067
 model_xgbtree <- caret::train(
   target ~ .,
   data = dfTrain_t,
@@ -345,15 +351,14 @@ model_xgbtree <- caret::train(
 
 validate(model_xgbtree, dfTrain_v, dfTrain_v$target)
 
-#### Train an randomforest model on the full training dataset and make predictions
-model_rf_full <- caret::train(
+### Train an randomforest model on the full training dataset and make predictions
+model_final_full <- caret::train(
   target ~ .,
   data = dfTrain,
-  method = 'rf',
-  tuneLength = 10,
+  method = 'xgbTree',
+  tuneLength = 5,
   trControl = ctrl
   )
-
 
 # Select the necesary variables
 dfTest <- dfTest[, names(dfTest) %in% names(dfTrain)]

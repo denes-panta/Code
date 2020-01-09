@@ -38,9 +38,9 @@ ensemble <- function(dfEnsemble) {
   dfEnsemble[dfEnsemble == 'bad'] <- 1
   dfEnsemble[] <- lapply(dfEnsemble, as.integer)
 
-  dfEnsemble$kknn <- dfEnsemble$kknn * 3
-  dfEnsemble$svmlr <- dfEnsemble$svmlr * 1.5
-  dfEnsemble$proto <- dfEnsemble$proto * 1.5
+  dfEnsemble$kknn <- dfEnsemble$kknn * 2
+  dfEnsemble$svmlr <- dfEnsemble$svmlr * 1
+  dfEnsemble$proto <- dfEnsemble$proto * 1
   
   dfEnsemble <- transform(
     dfEnsemble, 
