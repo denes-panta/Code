@@ -131,7 +131,7 @@ class recommender(object):
                 fRatePred += fRavg + fCavg
                 
                 # Calculate the error between the real rating and the prediction
-                fErr = sqrt((fRating - fRatePred) ** 2)
+                fErr = (fRating - fRatePred) ** 2
                 
                 # Create a regularization from the latent factors and the biases
                 fReg = np.sum(U[r, :] ** 2) + np.sum(V[c, :] ** 2)
@@ -166,7 +166,7 @@ class recommender(object):
                 # SGD update latent factors 
                 U -= self.fLr * fTotalGradU
                 V -= self.fLr * fTotalGradV
-            
+                
                 # Create the prediction matrix
                 self.mPreds = np.dot(U, V.T)
             
@@ -331,7 +331,7 @@ if __name__ == "__main__":
     # 1000000 : 2.442
     latfactEngine.predict(
             latent = 2,
-            lr = 1e-7,
+            lr = 1.5e-8,
             epoch = 50,
             lmbda = 1e-3,
             timeit = True,
