@@ -151,28 +151,28 @@ class recommender(object):
                 # Add the error to the total error
                 fTotalError += fErr
             
-            # If it is not the first epoch and the training error is higher
-            # than in the previous epoch, reduce the learning rate to 0
-            if self.fTrainingError != None:
-                
-                # If the training error is worse, then reverse the update
-                if self.fTrainingError <= fTotalError:
+            # If it is not the first epoch, set the recorded train error to double
+            if self.fTrainingError == None:
+                self.fTrainingError = fTotalError * 2
+            
+            # If the training error is worse than the previous epoch's
+            # set the learning rate to 0  
+            if self.fTrainingError <= fTotalError:
 
-                    # Set learning rate to 0
-                    self.fLr = 0
-
-            # If the learning rate is not zero apply gradient decent  
-            if self.fLr != 0:
+                self.fLr = 0
+            
+            # Othewise update the latent factors
+            else:
                 # SGD update latent factors 
                 U -= self.fLr * fTotalGradU
                 V -= self.fLr * fTotalGradV
-
-                # Update the training error
-                self.fTrainingError = fTotalError
             
                 # Create the prediction matrix
                 self.mPreds = np.dot(U, V.T)
             
+                # Update the training error
+                self.fTrainingError = fTotalError
+                
             # Calculate the Train Error
             iRatingCount = 0
             fTrainRMSE = 0
@@ -298,7 +298,7 @@ class recommender(object):
             sMovie = self.dictNames[str(iId)]
             
             lRecommendations.append(sMovie)
-            
+        
         return lRecommendations
     
         
@@ -339,5 +339,8 @@ if __name__ == "__main__":
             plot = True)
     
     # Make recommendations based on a user_id
-    latfactEngine.recommend('10')
+    lRecommendations = latfactEngine.recommend('10')
     
+    # Print recommendations
+    print('Recommended movies: ')
+    print(*lRecommendations, sep = '\n')
