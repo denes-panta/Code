@@ -472,11 +472,11 @@ class detectionNode(object):
     
 if __name__ == "__main__":  
     
-    # Question 1A - Data Parsing
+    # Data Parsing
     oEngNode = engineerNode('person_1.csv', sep = ';')
     oEngNode.calcTimeDistance()
     
-    # Question 1A - Summary statistics
+    # Summary statistics
     oAnaNode = analyticsNode(oEngNode.getDf())
     # Median distance travelled by date
     print('Median of the distances by date:')
@@ -506,7 +506,7 @@ if __name__ == "__main__":
     print('Locations visualised on a world map:')    
     oAnaNode.showTravelLocations()
     
-    # Question 2 - Lookup
+    # Lookup
     oLookUpNode = lookupNode(oEngNode.getRadianCoordDf())
     # Coordinate in the person_1.csv file with 1 meter accuracy
     oLookUpNode.lookupCoord(51.1716, 4.34697, 1)
@@ -515,7 +515,7 @@ if __name__ == "__main__":
     # Approximate coordinate not in the person_1.csv file with 20 km accuracy
     oLookUpNode.lookupCoord(51, 4, 20 * 1000)
     
-    # Question 3 - Detect Home / Work
+    # Detect Home / Work
     oDetNode = detectionNode(oEngNode.getDf())
     oDetNode.createSummary(eps = 0.0005)
     # Get home locations
